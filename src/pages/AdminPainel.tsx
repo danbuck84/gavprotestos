@@ -1,10 +1,12 @@
+
 import { useState, useEffect } from 'react';
 import { Container, Typography, Box, Button, Alert, CircularProgress, List, ListItem, ListItemText, IconButton, Divider, Paper, Chip } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { parseRaceJson } from '../services/raceParser';
 import { collection, addDoc, query, where, getDocs, deleteDoc, doc, onSnapshot, orderBy } from 'firebase/firestore';
-import { db } from '../firebase';
+import { db, auth } from '../firebase';
 import type { Race, Protest } from '../types';
+import NotificationBell from '../components/NotificationBell';
 
 import { useNavigate } from 'react-router-dom';
 
@@ -97,13 +99,7 @@ export default function AdminPainel() {
         }
     };
 
-    const getStatusColor = (status: string) => {
-        switch (status) {
-            case 'accepted': return 'success';
-            case 'rejected': return 'error';
-            default: return 'warning';
-        }
-    };
+
 
     return (
         <Container maxWidth="md" sx={{ mt: 4, mb: 8 }}>
@@ -195,23 +191,40 @@ export default function AdminPainel() {
                                                     <Typography variant="subtitle1" fontWeight="bold">
                                                         <span
                                                             style={{ cursor: 'pointer', textDecoration: 'underline' }}
-                                                            onClick={() => navigate(`/admin/piloto/${protest.accuserId}`)}
+                                                            onClick={() => navigate(`/ admin / piloto / ${protest.accuserId} `)}
                                                         >
                                                             {protest.accuserId}
                                                         </span>
                                                         {' vs '}
                                                         <span
                                                             style={{ cursor: 'pointer', textDecoration: 'underline' }}
-                                                            onClick={() => navigate(`/admin/piloto/${protest.accusedId}`)}
+                                                            onClick={() => navigate(`/ admin / piloto / ${protest.accusedId} `)}
                                                         >
                                                             {protest.accusedId}
                                                         </span>
                                                     </Typography>
-                                                    <Chip
-                                                        label={protest.status.toUpperCase()}
-                                                        color={getStatusColor(protest.status) as any}
-                                                        size="small"
-                                                    />
+                                                    <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                                                        <Button
+                                                            variant="contained"
+                                                            size="small"
+                                                            color="primary"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                navigate(`/ admin / julgamento / ${protest.id} `);
+                                                            }}
+                                                        >
+                                                            Julgar
+                                                        </Button>
+                                                        <Chip
+                                                            label={protest.status.toUpperCase().replace('_', ' ')}
+                                                            color={
+                                                                protest.status === 'concluded' ? 'success' :
+                                                                    protest.status === 'under_review' ? 'warning' :
+                                                                        protest.status === 'inconclusive' ? 'default' : 'info'
+                                                            }
+                                                            size="small"
+                                                        />
+                                                    </Box>
                                                 </Box>
                                             }
                                             secondary={
@@ -221,7 +234,22 @@ export default function AdminPainel() {
                                                     </Typography>
                                                     {protest.description}
                                                     <br />
-                                                    <a href={protest.videoUrl} target="_blank" rel="noopener noreferrer">Ver Vídeo</a>
+                                                    <Box sx={{ display: 'flex', gap: 1, mt: 1, flexWrap: 'wrap' }}>
+                                                        {protest.videoUrls && protest.videoUrls.length > 0 ? (
+                                                            protest.videoUrls.map((url, i) => (
+                                                                <a key={i} href={url} target="_blank" rel="noopener noreferrer">
+                                                                    Vídeo {i + 1}
+                                                                </a>
+                                                            ))
+                                                        ) : (
+                                                            // Fallback for old protests
+                                                            (protest as any).videoUrl && (
+                                                                <a href={(protest as any).videoUrl} target="_blank" rel="noopener noreferrer">
+                                                                    Ver Vídeo
+                                                                </a>
+                                                            )
+                                                        )}
+                                                    </Box>
                                                 </>
                                             }
                                         />

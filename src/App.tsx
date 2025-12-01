@@ -7,6 +7,7 @@ import AdminPainel from './pages/AdminPainel';
 import ProtectedRoute from './components/ProtectedRoute';
 import AdminUsers from './pages/AdminUsers';
 import DriverProfile from './pages/DriverProfile';
+import JudgmentDetail from './pages/JudgmentDetail';
 
 const darkTheme = createTheme({
   palette: {
@@ -63,6 +64,11 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route path="/admin/julgamento/:id" element={
+            <ProtectedRoute>
+              <JudgmentDetail />
+            </ProtectedRoute>
+          } />
           <Route
             path="/admin/piloto/:id"
             element={

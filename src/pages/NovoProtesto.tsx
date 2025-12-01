@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import {
     Container, Typography, TextField, Button, MenuItem,
-    Select, FormControl, InputLabel, Box, CircularProgress, Snackbar, Alert, LinearProgress
+    Select, FormControl, InputLabel, Box, CircularProgress, Snackbar, Alert, LinearProgress, Chip, Stack
 } from '@mui/material';
 import { collection, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
@@ -17,14 +17,15 @@ export default function NovoProtesto() {
 
     const [accusedId, setAccusedId] = useState('');
     const [lap, setLap] = useState('');
-    const [videoMinute, setVideoMinute] = useState('');
-    const [videoUrl, setVideoUrl] = useState('');
+    const [heat, setHeat] = useState<'Bateria 1' | 'Bateria 2' | 'Bateria Única'>('Bateria 1');
+    const [positionsLost, setPositionsLost] = useState('');
     const [incidentType, setIncidentType] = useState('');
     const [description, setDescription] = useState('');
 
     // Video Upload State
-    const [videoFile, setVideoFile] = useState<File | null>(null);
+    const [videoFiles, setVideoFiles] = useState<File[]>([]);
     const [uploadProgress, setUploadProgress] = useState(0);
+    const [isDeadlineExpired, setIsDeadlineExpired] = useState(false);
 
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
@@ -42,6 +43,8 @@ export default function NovoProtesto() {
                     const data = doc.data();
                     return { ...data, id: doc.id } as Race;
                 });
+                // Sort by date desc
+                racesData.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
                 setRaces(racesData);
             } catch (error) {
                 console.error("Error fetching races", error);
@@ -58,16 +61,42 @@ export default function NovoProtesto() {
             const race = races.find(r => r.id === selectedRaceId);
             if (race) {
                 setDrivers(race.drivers);
+
+                // Check 24h Deadline
+                const raceDate = new Date(race.date).getTime();
+                const now = Date.now();
+                const twentyFourHours = 24 * 60 * 60 * 1000;
+
+                if (now > raceDate + twentyFourHours) {
+                    setIsDeadlineExpired(true);
+                    setSnackbar({
+                        open: true,
+                        message: "O prazo de 24h para protestos desta corrida já encerrou.",
+                        severity: 'error'
+                    });
+                } else {
+                    setIsDeadlineExpired(false);
+                }
             }
         } else {
             setDrivers([]);
+            setIsDeadlineExpired(false);
         }
     }, [selectedRaceId, races]);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files[0]) {
-            setVideoFile(e.target.files[0]);
+        if (e.target.files) {
+            const files = Array.from(e.target.files);
+            if (files.length + videoFiles.length > 3) {
+                setSnackbar({ open: true, message: "Máximo de 3 vídeos permitidos.", severity: 'warning' });
+                return;
+            }
+            setVideoFiles(prev => [...prev, ...files].slice(0, 3));
         }
+    };
+
+    const removeFile = (index: number) => {
+        setVideoFiles(prev => prev.filter((_, i) => i !== index));
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -77,13 +106,14 @@ export default function NovoProtesto() {
             return;
         }
 
-        // Validation: Self protest
+        if (isDeadlineExpired) {
+            setSnackbar({ open: true, message: "Prazo de protesto encerrado.", severity: 'error' });
+            return;
+        }
+
         let currentUserSteamId = auth.currentUser.uid;
         if (currentUserSteamId.startsWith('steam:')) {
             currentUserSteamId = currentUserSteamId.replace('steam:', '');
-        } else {
-            // Dev/Test login might not have 'steam:' prefix
-            console.warn("User ID does not start with 'steam:'. Using raw UID:", currentUserSteamId);
         }
 
         if (accusedId === currentUserSteamId) {
@@ -91,33 +121,37 @@ export default function NovoProtesto() {
             return;
         }
 
-        if (!videoUrl && !videoFile) {
-            setSnackbar({ open: true, message: "Por favor, forneça um link de vídeo ou faça upload de um arquivo.", severity: 'warning' });
+        if (videoFiles.length === 0) {
+            setSnackbar({ open: true, message: "Pelo menos 1 vídeo é obrigatório.", severity: 'warning' });
             return;
         }
 
         setSubmitting(true);
 
         try {
-            let finalVideoUrl = videoUrl;
+            const uploadedUrls: string[] = [];
 
-            // Handle Video Upload
-            if (videoFile) {
-                const storageRef = ref(storage, `protests/${currentUserSteamId}/${Date.now()}_${videoFile.name}`);
-                const uploadTask = uploadBytesResumable(storageRef, videoFile);
+            // Upload Videos Sequentially
+            for (let i = 0; i < videoFiles.length; i++) {
+                const file = videoFiles[i];
+                const storageRef = ref(storage, `protests/${currentUserSteamId}/${Date.now()}_${file.name}`);
+                const uploadTask = uploadBytesResumable(storageRef, file);
 
                 await new Promise<void>((resolve, reject) => {
                     uploadTask.on('state_changed',
                         (snapshot) => {
-                            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-                            setUploadProgress(progress);
+                            // Calculate total progress roughly
+                            const currentFileProgress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                            const totalProgress = ((i * 100) + currentFileProgress) / videoFiles.length;
+                            setUploadProgress(totalProgress);
                         },
                         (error) => {
                             console.error("Upload error:", error);
                             reject(error);
                         },
                         async () => {
-                            finalVideoUrl = await getDownloadURL(uploadTask.snapshot.ref);
+                            const url = await getDownloadURL(uploadTask.snapshot.ref);
+                            uploadedUrls.push(url);
                             resolve();
                         }
                     );
@@ -129,8 +163,9 @@ export default function NovoProtesto() {
                 accuserId: currentUserSteamId,
                 accusedId,
                 lap: Number(lap),
-                videoMinute,
-                videoUrl: finalVideoUrl,
+                heat,
+                positionsLost: Number(positionsLost),
+                videoUrls: uploadedUrls,
                 incidentType,
                 description,
                 status: 'pending',
@@ -164,6 +199,13 @@ export default function NovoProtesto() {
                 &lt; Voltar
             </Button>
             <Typography variant="h4" gutterBottom>Novo Protesto</Typography>
+
+            {isDeadlineExpired && (
+                <Alert severity="error" sx={{ mb: 3 }}>
+                    O prazo de 24 horas para protestos desta corrida já encerrou.
+                </Alert>
+            )}
+
             <form onSubmit={handleSubmit}>
                 <FormControl fullWidth margin="normal">
                     <InputLabel>Etapa / Corrida</InputLabel>
@@ -198,6 +240,20 @@ export default function NovoProtesto() {
                 </FormControl>
 
                 <Box sx={{ display: 'flex', gap: 2 }}>
+                    <FormControl fullWidth margin="normal">
+                        <InputLabel>Bateria</InputLabel>
+                        <Select
+                            value={heat}
+                            label="Bateria"
+                            onChange={(e) => setHeat(e.target.value as any)}
+                            required
+                        >
+                            <MenuItem value="Bateria 1">Bateria 1</MenuItem>
+                            <MenuItem value="Bateria 2">Bateria 2</MenuItem>
+                            <MenuItem value="Bateria Única">Bateria Única</MenuItem>
+                        </Select>
+                    </FormControl>
+
                     <TextField
                         label="Volta"
                         type="number"
@@ -207,34 +263,53 @@ export default function NovoProtesto() {
                         fullWidth
                         margin="normal"
                     />
-                    <TextField
-                        label="Minuto do Vídeo"
-                        placeholder="ex: 12:30"
-                        value={videoMinute}
-                        onChange={(e) => setVideoMinute(e.target.value)}
-                        required
-                        fullWidth
-                        margin="normal"
-                    />
                 </Box>
 
+                <TextField
+                    label="Posições Perdidas"
+                    type="number"
+                    value={positionsLost}
+                    onChange={(e) => setPositionsLost(e.target.value)}
+                    required
+                    fullWidth
+                    margin="normal"
+                    helperText="Quantas posições você perdeu devido ao incidente?"
+                />
+
                 <Box sx={{ mt: 2, mb: 1, p: 2, border: '1px dashed grey', borderRadius: 1 }}>
-                    <Typography variant="subtitle1" gutterBottom>Evidência em Vídeo</Typography>
+                    <Typography variant="subtitle1" gutterBottom>Evidência em Vídeo (Obrigatório)</Typography>
+                    <Typography variant="caption" display="block" sx={{ mb: 2 }}>
+                        Envie até 3 vídeos. Formatos aceitos: MP4, MKV, AVI, WMV.
+                    </Typography>
 
                     <Button
                         variant="outlined"
                         component="label"
                         fullWidth
                         sx={{ mb: 2 }}
+                        disabled={videoFiles.length >= 3}
                     >
-                        {videoFile ? `Arquivo selecionado: ${videoFile.name}` : "Fazer Upload de Vídeo"}
+                        Selecionar Vídeos
                         <input
                             type="file"
                             hidden
+                            multiple
                             accept="video/*,.mkv,.mp4,.avi,.wmv,.mov,.webm"
                             onChange={handleFileChange}
                         />
                     </Button>
+
+                    <Stack direction="row" spacing={1} sx={{ mb: 2, flexWrap: 'wrap', gap: 1 }}>
+                        {videoFiles.map((file, index) => (
+                            <Chip
+                                key={index}
+                                label={file.name}
+                                onDelete={() => removeFile(index)}
+                                color="primary"
+                                variant="outlined"
+                            />
+                        ))}
+                    </Stack>
 
                     {uploadProgress > 0 && uploadProgress < 100 && (
                         <Box sx={{ width: '100%', mb: 2 }}>
@@ -242,17 +317,6 @@ export default function NovoProtesto() {
                             <Typography variant="caption" color="text.secondary">{Math.round(uploadProgress)}% enviado</Typography>
                         </Box>
                     )}
-
-                    <Typography variant="body2" align="center" sx={{ mb: 2 }}>OU</Typography>
-
-                    <TextField
-                        label="Link do Vídeo (YouTube/Twitch)"
-                        type="url"
-                        value={videoUrl}
-                        onChange={(e) => setVideoUrl(e.target.value)}
-                        fullWidth
-                        helperText="Se preferir, cole o link do vídeo hospedado externamente."
-                    />
                 </Box>
 
                 <FormControl fullWidth margin="normal">
@@ -287,7 +351,7 @@ export default function NovoProtesto() {
                     size="large"
                     fullWidth
                     sx={{ mt: 3 }}
-                    disabled={submitting}
+                    disabled={submitting || isDeadlineExpired}
                 >
                     {submitting ? <CircularProgress size={24} /> : "Enviar Protesto"}
                 </Button>

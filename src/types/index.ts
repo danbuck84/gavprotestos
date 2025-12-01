@@ -18,7 +18,15 @@ export interface Race {
   drivers: RaceDriver[];
 }
 
-export type ProtestStatus = 'pending' | 'accepted' | 'rejected';
+export type ProtestStatus = 'pending' | 'under_review' | 'accepted' | 'rejected' | 'concluded' | 'inconclusive';
+
+export interface Vote {
+  adminId: string;
+  adminName: string;
+  verdict: 'punish' | 'acquit';
+  reason: string;
+  createdAt: string;
+}
 
 export interface Protest {
   id: string;
@@ -27,10 +35,11 @@ export interface Protest {
   accusedId: string;
   lap: number;
   description: string;
-  videoUrl: string;
+  videoUrls: string[];
   incidentType: 'Colisão' | 'Bloqueio' | 'Retorno Inseguro' | 'Outro';
-  videoMinute: string;
+  heat: 'Bateria 1' | 'Bateria 2' | 'Bateria Única';
+  positionsLost: number;
   status: ProtestStatus;
-  verdict?: string;
+  verdict?: string; // 'Punido', 'Absolvido', etc.
   createdAt: string;
 }

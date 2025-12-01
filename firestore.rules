@@ -2,36 +2,56 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Helper function to check if user is admin
-    function isAdmin() {
-      return request.auth != null && (
-        request.auth.uid == '76561197991580442' || 
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'super-admin']
-      );
-    }
-
-    // Helper function to check if user is authenticated
-    function isAuth() {
+    // Helper functions
+    function isAuthenticated() {
       return request.auth != null;
     }
+    
+    function isAdmin() {
+      return isAuthenticated() && 
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'super-admin' ||
+         request.auth.uid == '76561197991580442');
+    }
 
-    // Users Collection
+    function isSuperAdmin() {
+      return isAuthenticated() && request.auth.uid == '76561197991580442';
+    }
+
+    // Users: Auth can read, Admin can write (except own profile update which is allowed)
     match /users/{userId} {
-      allow read: if isAuth();
-      // Allow users to update their own profile (e.g. displayName), allow admins to update roles
-      allow write: if request.auth.uid == userId || isAdmin();
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated(); // For first login
+      allow update: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow delete: if isSuperAdmin();
+      
+      // Notifications sub-collection: User can read/write (mark as read)
+      match /notifications/{notificationId} {
+        allow read: if request.auth.uid == userId;
+        allow update: if request.auth.uid == userId; // To mark as read
+        allow create: if false; // Created by backend only
+        allow delete: if false;
+      }
     }
 
-    // Protests Collection
+    // Protests: Auth can read/create, Admin can update
     match /protests/{protestId} {
-      allow read: if isAuth();
-      allow create: if isAuth();
-      allow update, delete: if isAdmin();
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAdmin();
+      
+      // Votes sub-collection: Only admins can read and write
+      match /votes/{voteId} {
+        allow read: if isAdmin();
+        allow create: if isAdmin();
+        allow update: if false; // Votes are immutable
+        allow delete: if false;
+      }
     }
 
-    // Races Collection
+    // Races: Auth can read, Admin can write
     match /races/{raceId} {
-      allow read: if isAuth();
+      allow read: if isAuthenticated();
       allow write: if isAdmin();
     }
   }

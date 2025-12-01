@@ -5,6 +5,8 @@ import { auth, db } from '../firebase';
 import { onAuthStateChanged, signOut, updateProfile, type User } from 'firebase/auth';
 import { collection, query, where, getDocs, orderBy, doc, setDoc } from 'firebase/firestore';
 import type { Protest } from '../types';
+import { isAdmin as checkIsAdmin } from '../utils/permissions';
+import NotificationBell from '../components/NotificationBell';
 
 export default function Dashboard() {
     const navigate = useNavigate();
@@ -103,43 +105,32 @@ export default function Dashboard() {
         }
     };
 
-    const getStatusColor = (status: string) => {
-        switch (status) {
-            case 'accepted': return 'success';
-            case 'rejected': return 'error';
-            default: return 'warning';
-        }
-    };
 
-    const getStatusLabel = (status: string) => {
-        switch (status) {
-            case 'accepted': return 'Aceito';
-            case 'rejected': return 'Rejeitado';
-            default: return 'Pendente';
-        }
-    };
 
     return (
         <Container maxWidth="md" sx={{ mt: 4, mb: 4 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
-                <Typography variant="h4">
+                <Typography variant="h4" component="h1">
                     GAV Protestos
                 </Typography>
-                {user ? (
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Chip
-                            avatar={<Avatar src={user.photoURL || undefined}>{user.displayName?.[0] || 'U'}</Avatar>}
-                            label={user.displayName || 'Usuário'}
-                        />
-                        <Button variant="text" color="inherit" onClick={handleLogout}>
-                            Sair
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    {user && <NotificationBell />}
+                    {user ? (
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Chip
+                                avatar={<Avatar src={user.photoURL || undefined}>{user.displayName?.[0] || 'U'}</Avatar>}
+                                label={user.displayName || 'Usuário'}
+                            />
+                            <Button variant="text" color="inherit" onClick={handleLogout}>
+                                Sair
+                            </Button>
+                        </Box>
+                    ) : (
+                        <Button variant="outlined" onClick={() => navigate('/login')}>
+                            Login
                         </Button>
-                    </Box>
-                ) : (
-                    <Button variant="outlined" onClick={() => navigate('/login')}>
-                        Login
-                    </Button>
-                )}
+                    )}
+                </Box>
             </Box>
 
             <Box sx={{ display: 'flex', gap: 2, mb: 4 }}>
@@ -178,8 +169,17 @@ export default function Dashboard() {
                                                     Contra: {protest.accusedId} (Volta {protest.lap})
                                                 </Typography>
                                                 <Chip
-                                                    label={getStatusLabel(protest.status)}
-                                                    color={getStatusColor(protest.status) as any}
+                                                    label={
+                                                        protest.status === 'concluded' ? protest.verdict :
+                                                            protest.status === 'under_review' ? 'Em Análise' :
+                                                                protest.status === 'inconclusive' ? 'Inconclusivo' :
+                                                                    'Pendente'
+                                                    }
+                                                    color={
+                                                        protest.status === 'concluded' ? (protest.verdict === 'Punido' ? 'error' : 'success') :
+                                                            protest.status === 'under_review' ? 'warning' :
+                                                                'default'
+                                                    }
                                                     size="small"
                                                 />
                                             </Box>
