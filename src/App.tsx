@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { CssBaseline, ThemeProvider, createTheme } from '@mui/material';
+import { CssBaseline, ThemeProvider } from '@mui/material';
+import theme from './theme';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import NovoProtesto from './pages/NovoProtesto';
@@ -8,75 +9,50 @@ import ProtectedRoute from './components/ProtectedRoute';
 import AdminUsers from './pages/AdminUsers';
 import DriverProfile from './pages/DriverProfile';
 import JudgmentDetail from './pages/JudgmentDetail';
+import MainLayout from './layouts/MainLayout';
 
-const darkTheme = createTheme({
-  palette: {
-    mode: 'dark',
-    primary: {
-      main: '#ce93d8', // Purple accent
-    },
-    background: {
-      default: '#121212',
-      paper: '#1e1e1e',
-    },
-  },
-  components: {
-    MuiButton: {
-      styleOverrides: {
-        root: {
-          padding: '12px 24px', // Touch friendly
-          fontSize: '1rem',
-        },
-      },
-    },
-    MuiTextField: {
-      defaultProps: {
-        variant: 'outlined',
-        fullWidth: true,
-        margin: 'normal',
-      },
-    },
-  },
-});
+
 
 function App() {
   return (
-    <ThemeProvider theme={darkTheme}>
+    <ThemeProvider theme={theme}>
       <CssBaseline />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/novo-protesto" element={<NovoProtesto />} />
-          <Route
-            path="/admin"
-            element={
+          <Route element={<MainLayout />}>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/novo-protesto" element={<NovoProtesto />} />
+            <Route
+              path="/admin"
+              element={
+                <ProtectedRoute>
+                  <AdminPainel />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/usuarios"
+              element={
+                <ProtectedRoute>
+                  <AdminUsers />
+                </ProtectedRoute>
+              }
+            />
+            <Route path="/admin/julgamento/:id" element={
               <ProtectedRoute>
-                <AdminPainel />
+                <JudgmentDetail />
               </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/admin/usuarios"
-            element={
-              <ProtectedRoute>
-                <AdminUsers />
-              </ProtectedRoute>
-            }
-          />
-          <Route path="/admin/julgamento/:id" element={
-            <ProtectedRoute>
-              <JudgmentDetail />
-            </ProtectedRoute>
-          } />
-          <Route
-            path="/admin/piloto/:id"
-            element={
-              <ProtectedRoute>
-                <DriverProfile />
-              </ProtectedRoute>
-            }
-          />
+            } />
+            <Route
+              path="/admin/piloto/:id"
+              element={
+                <ProtectedRoute>
+                  <DriverProfile />
+                </ProtectedRoute>
+              }
+            />
+          </Route>
         </Routes>
       </BrowserRouter>
     </ThemeProvider>

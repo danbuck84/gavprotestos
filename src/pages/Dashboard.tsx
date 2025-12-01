@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Container, Typography, Button, Box, Avatar, Chip, Paper, List, ListItem, ListItemText, Divider, Alert, CircularProgress, Dialog, DialogTitle, DialogContent, DialogActions, TextField } from '@mui/material';
+import { Container, Typography, Box, Button, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip, CircularProgress, Alert, Avatar, useMediaQuery, useTheme, Dialog, DialogTitle, DialogContent, DialogActions, TextField } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { auth, db } from '../firebase';
 import { onAuthStateChanged, signOut, updateProfile, type User } from 'firebase/auth';
@@ -7,9 +7,12 @@ import { collection, query, where, getDocs, orderBy, doc, setDoc } from 'firebas
 import type { Protest } from '../types';
 
 import NotificationBell from '../components/NotificationBell';
+import ProtestCard from '../components/ProtestCard';
 
 export default function Dashboard() {
     const navigate = useNavigate();
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const [user, setUser] = useState<User | null>(null);
     const [protests, setProtests] = useState<Protest[]>([]);
     const [loadingProtests, setLoadingProtests] = useState(false);
@@ -105,8 +108,6 @@ export default function Dashboard() {
         }
     };
 
-
-
     return (
         <Container maxWidth="md" sx={{ mt: 4, mb: 4 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
@@ -153,52 +154,53 @@ export default function Dashboard() {
                     <CircularProgress />
                 </Box>
             ) : protests.length === 0 ? (
-                <Paper sx={{ p: 3, textAlign: 'center', color: 'text.secondary' }}>
-                    Você ainda não enviou nenhum protesto.
-                </Paper>
+                <Typography variant="body1" color="text.secondary">
+                    Nenhum protesto encontrado.
+                </Typography>
+            ) : isMobile ? (
+                <Box>
+                    {protests.map((protest) => (
+                        <ProtestCard key={protest.id} protest={protest} />
+                    ))}
+                </Box>
             ) : (
-                <Paper elevation={2}>
-                    <List>
-                        {protests.map((protest, index) => (
-                            <Box key={protest.id}>
-                                <ListItem alignItems="flex-start">
-                                    <ListItemText
-                                        primary={
-                                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <Typography variant="subtitle1" component="span" fontWeight="bold">
-                                                    Contra: {protest.accusedId} (Volta {protest.lap})
-                                                </Typography>
-                                                <Chip
-                                                    label={
-                                                        protest.status === 'concluded' ? protest.verdict :
-                                                            protest.status === 'under_review' ? 'Em Análise' :
-                                                                protest.status === 'inconclusive' ? 'Inconclusivo' :
-                                                                    'Pendente'
-                                                    }
-                                                    color={
-                                                        protest.status === 'concluded' ? (protest.verdict === 'Punido' ? 'error' : 'success') :
-                                                            protest.status === 'under_review' ? 'warning' :
-                                                                'default'
-                                                    }
-                                                    size="small"
-                                                />
-                                            </Box>
-                                        }
-                                        secondary={
-                                            <>
-                                                <Typography component="span" variant="body2" color="text.primary" display="block">
-                                                    {protest.incidentType} - {new Date(protest.createdAt).toLocaleDateString()}
-                                                </Typography>
-                                                {protest.description}
-                                            </>
-                                        }
-                                    />
-                                </ListItem>
-                                {index < protests.length - 1 && <Divider component="li" />}
-                            </Box>
-                        ))}
-                    </List>
-                </Paper>
+                <TableContainer component={Paper}>
+                    <Table>
+                        <TableHead>
+                            <TableRow>
+                                <TableCell>Data</TableCell>
+                                <TableCell>Acusado</TableCell>
+                                <TableCell>Status</TableCell>
+                                <TableCell>Veredito</TableCell>
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
+                            {protests.map((protest) => (
+                                <TableRow key={protest.id}>
+                                    <TableCell>{protest.createdAt && new Date(protest.createdAt).toLocaleDateString()}</TableCell>
+                                    <TableCell>{protest.accusedId}</TableCell>
+                                    <TableCell>
+                                        <Chip
+                                            label={protest.status === 'pending' ? 'Pendente' : protest.status === 'under_review' ? 'Em Análise' : 'Concluído'}
+                                            color={protest.status === 'pending' ? 'warning' : protest.status === 'under_review' ? 'info' : 'success'}
+                                            size="small"
+                                        />
+                                    </TableCell>
+                                    <TableCell>
+                                        {protest.status === 'concluded' ? (
+                                            <Chip
+                                                label={protest.verdict === 'punished' ? 'Punido' : protest.verdict === 'absolved' ? 'Absolvido' : 'Inconclusivo'}
+                                                color={protest.verdict === 'punished' ? 'error' : protest.verdict === 'absolved' ? 'success' : 'default'}
+                                                size="small"
+                                                variant="outlined"
+                                            />
+                                        ) : '-'}
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </TableContainer>
             )}
 
             {/* Profile Completion Dialog */}

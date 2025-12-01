@@ -3,7 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
     Container, Typography, Box, Paper, Button, TextField,
     FormControl, RadioGroup, FormControlLabel, Radio,
-    CircularProgress, Chip, List, ListItem, ListItemText, Alert, Snackbar
+    CircularProgress, Chip, List, ListItem, ListItemText, Alert, Snackbar,
+    useTheme, useMediaQuery, Stack, Divider
 } from '@mui/material';
 import { doc, collection, addDoc, onSnapshot, updateDoc, getDoc } from 'firebase/firestore';
 import { db, auth } from '../firebase';
@@ -12,6 +13,9 @@ import type { Protest, Vote, ProtestStatus, Race } from '../types';
 export default function JudgmentDetail() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+
     const [protest, setProtest] = useState<Protest | null>(null);
     const [race, setRace] = useState<Race | null>(null);
     const [votes, setVotes] = useState<Vote[]>([]);
@@ -26,6 +30,7 @@ export default function JudgmentDetail() {
     const [verdict, setVerdict] = useState<'punish' | 'acquit'>('punish');
     const [reason, setReason] = useState('');
     const [hasVoted, setHasVoted] = useState(false);
+    const [showVoteForm, setShowVoteForm] = useState(false); // Toggle for mobile sticky footer
 
     const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
         open: false, message: '', severity: 'success'
@@ -39,7 +44,6 @@ export default function JudgmentDetail() {
                 const protestData = { id: docSnap.id, ...docSnap.data() } as Protest;
                 setProtest(protestData);
 
-                // Fetch Race Data for Lifecycle Logic
                 if (protestData.raceId) {
                     const raceDoc = await getDoc(doc(db, 'races', protestData.raceId));
                     if (raceDoc.exists()) {
@@ -69,7 +73,6 @@ export default function JudgmentDetail() {
         };
     }, [id, navigate]);
 
-    // Lifecycle Logic
     useEffect(() => {
         if (!race || !protest) return;
 
@@ -87,7 +90,6 @@ export default function JudgmentDetail() {
                 const hoursLeft = 48 - hoursSinceRace;
                 setTimeRemaining(`${Math.floor(hoursLeft)}h ${Math.round((hoursLeft % 1) * 60)}m para encerrar votação`);
 
-                // Auto-start judgment (Pending -> Under Review)
                 if (protest.status === 'pending') {
                     await updateDoc(doc(db, 'protests', protest.id), { status: 'under_review' });
                 }
@@ -95,25 +97,16 @@ export default function JudgmentDetail() {
                 setLifecyclePhase('concluded');
                 setTimeRemaining('Votação Encerrada');
 
-                // Auto-conclude judgment
                 if (protest.status !== 'concluded' && protest.status !== 'inconclusive') {
-                    // Calculate Verdict
-                    // We need to fetch votes again or rely on state? State is safe here as it comes from snapshot.
-                    // However, 'votes' state might not be populated yet on first render.
-                    // But this effect runs when 'race' and 'protest' change. 'votes' is separate.
-                    // Let's assume we have votes. If votes are empty, it might be inconclusive or just no one voted.
-
-                    // Wait for votes to load? 'loading' is false.
-                    // Let's trigger calculation.
                     calculateAndSaveVerdict();
                 }
             }
         };
 
         checkLifecycle();
-        const interval = setInterval(checkLifecycle, 60000); // Update every minute
+        const interval = setInterval(checkLifecycle, 60000);
         return () => clearInterval(interval);
-    }, [race, protest, votes]); // Added votes dependency to ensure we have them for calculation
+    }, [race, protest, votes]);
 
     const calculateAndSaveVerdict = async () => {
         if (!protest || !votes) return;
@@ -142,7 +135,6 @@ export default function JudgmentDetail() {
                 verdict: finalVerdict,
                 voteCount: { punish: punishVotes, acquit: acquitVotes }
             });
-            // No snackbar here to avoid spamming on auto-update
         } catch (error) {
             console.error("Error auto-concluding:", error);
         }
@@ -164,12 +156,31 @@ export default function JudgmentDetail() {
             await addDoc(collection(db, 'protests', protest.id, 'votes'), voteData);
             setSnackbar({ open: true, message: 'Voto registrado com sucesso!', severity: 'success' });
             setReason('');
+            setShowVoteForm(false);
         } catch (error) {
             console.error("Error submitting vote:", error);
             setSnackbar({ open: true, message: 'Erro ao registrar voto.', severity: 'error' });
         } finally {
             setVoting(false);
         }
+    };
+
+    const getEmbedUrl = (url: string) => {
+        if (url.includes('youtube.com') || url.includes('youtu.be')) {
+            let videoId = '';
+            if (url.includes('youtu.be')) {
+                videoId = url.split('/').pop() || '';
+            } else {
+                const urlParams = new URLSearchParams(new URL(url).search);
+                videoId = urlParams.get('v') || '';
+            }
+            return `https://www.youtube.com/embed/${videoId}`;
+        }
+        return url;
+    };
+
+    const isVideoFile = (url: string) => {
+        return !url.includes('youtube') && !url.includes('youtu.be');
     };
 
     if (loading) {
@@ -179,172 +190,180 @@ export default function JudgmentDetail() {
     if (!protest) return null;
 
     return (
-        <Container maxWidth="lg" sx={{ mt: 4, mb: 8 }}>
-            <Button onClick={() => navigate('/admin')} sx={{ mb: 2 }}>&lt; Voltar ao Painel</Button>
+        <Container maxWidth="md" sx={{ mt: 2, mb: 12 }}> {/* Added mb: 12 for sticky footer space */}
+            <Button onClick={() => navigate('/admin')} sx={{ mb: 2 }}>&lt; Voltar</Button>
 
-            <Paper elevation={3} sx={{ p: 4, mb: 4 }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                    <Typography variant="h4">Julgamento de Protesto</Typography>
-                    <Box sx={{ textAlign: 'right' }}>
-                        <Chip
-                            label={protest.status.toUpperCase().replace('_', ' ')}
-                            color={protest.status === 'concluded' ? 'success' : protest.status === 'under_review' ? 'warning' : 'default'}
-                            sx={{ mb: 1 }}
-                        />
-                        <Typography variant="caption" display="block" color="text.secondary">
-                            {timeRemaining}
-                        </Typography>
-                    </Box>
-                </Box>
-
-                <Box sx={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                    <Box sx={{ flex: 1, minWidth: 300 }}>
-                        <Typography variant="subtitle1" fontWeight="bold">Acusador:</Typography>
-                        <Typography gutterBottom>{protest.accuserId}</Typography>
-
-                        <Typography variant="subtitle1" fontWeight="bold">Acusado:</Typography>
-                        <Typography gutterBottom>{protest.accusedId}</Typography>
-
-                        <Typography variant="subtitle1" fontWeight="bold">Incidente:</Typography>
-                        <Typography gutterBottom>{protest.incidentType} (Volta {protest.lap})</Typography>
-
-                        <Typography variant="subtitle1" fontWeight="bold">Bateria / Posições Perdidas:</Typography>
-                        <Typography gutterBottom>{protest.heat} / {protest.positionsLost}</Typography>
-                    </Box>
-
-                    <Box sx={{ flex: 2, minWidth: 300 }}>
-                        <Typography variant="subtitle1" fontWeight="bold">Descrição:</Typography>
-                        <Paper variant="outlined" sx={{ p: 2, mb: 2, bgcolor: '#f5f5f5' }}>
-                            <Typography>{protest.description}</Typography>
-                        </Paper>
-
-                        <Typography variant="subtitle1" fontWeight="bold">Vídeos:</Typography>
-                        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                            {protest.videoUrls && protest.videoUrls.length > 0 ? (
-                                protest.videoUrls.map((url, i) => (
-                                    <Button key={i} variant="outlined" href={url} target="_blank" size="small">
-                                        Assistir Vídeo {i + 1}
-                                    </Button>
-                                ))
-                            ) : (
-                                (protest as any).videoUrl && (
-                                    <Button variant="outlined" href={(protest as any).videoUrl} target="_blank" size="small">
-                                        Assistir Vídeo
-                                    </Button>
-                                )
-                            )}
+            <Stack spacing={3}>
+                {/* Header Section */}
+                <Paper elevation={0} sx={{ p: 2, bgcolor: 'background.paper', borderRadius: 2 }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <Box>
+                            <Typography variant="overline" color="text.secondary">Protesto</Typography>
+                            <Typography variant="h6" fontWeight="bold">
+                                {protest.accuserId} <Typography component="span" color="text.secondary">vs</Typography> {protest.accusedId}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                                {race?.trackName} - {protest.heat}
+                            </Typography>
                         </Box>
+                        <Chip
+                            label={protest.status === 'concluded' ? protest.verdict : protest.status.replace('_', ' ').toUpperCase()}
+                            color={protest.status === 'concluded' ? (protest.verdict === 'Punido' ? 'error' : 'success') : 'warning'}
+                            size="small"
+                        />
                     </Box>
-                </Box>
-            </Paper>
+                    <Box sx={{ mt: 2, p: 1.5, bgcolor: 'rgba(255,255,255,0.05)', borderRadius: 1 }}>
+                        <Typography variant="body2" fontWeight="bold">Incidente:</Typography>
+                        <Typography variant="body2">{protest.incidentType} (Volta {protest.lap})</Typography>
+                    </Box>
+                </Paper>
 
-            {/* Lifecycle Info */}
-            {lifecyclePhase === 'submission' && (
-                <Alert severity="info" sx={{ mb: 4 }}>
-                    A votação ainda não foi aberta. Aguarde o fim do prazo de envio de protestos (24h após a corrida).
-                </Alert>
-            )}
+                {/* Description Section */}
+                <Paper elevation={0} sx={{ p: 2 }}>
+                    <Typography variant="subtitle1" fontWeight="bold" gutterBottom>Descrição do Ocorrido</Typography>
+                    <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
+                        {protest.description}
+                    </Typography>
+                </Paper>
 
-            {/* Voting Section */}
-            {(lifecyclePhase === 'voting' || lifecyclePhase === 'concluded') && (
-                <Box sx={{ display: 'flex', gap: 4, flexDirection: { xs: 'column', md: 'row' } }}>
-                    <Box sx={{ flex: 1 }}>
-                        <Typography variant="h5" gutterBottom>Votação</Typography>
-
-                        {lifecyclePhase === 'voting' && !hasVoted && (
-                            <Paper sx={{ p: 3, mb: 3 }}>
-                                <Typography variant="h6" gutterBottom>Seu Voto</Typography>
-                                <FormControl component="fieldset">
-                                    <RadioGroup row value={verdict} onChange={(e) => setVerdict(e.target.value as any)}>
-                                        <FormControlLabel value="punish" control={<Radio />} label="PUNIR (Sim)" />
-                                        <FormControlLabel value="acquit" control={<Radio />} label="ABSOLVER (Não)" />
-                                    </RadioGroup>
-                                </FormControl>
-                                <TextField
-                                    label="Justificativa"
-                                    multiline
-                                    rows={3}
-                                    fullWidth
-                                    value={reason}
-                                    onChange={(e) => setReason(e.target.value)}
-                                    sx={{ mt: 2, mb: 2 }}
-                                />
-                                <Button
-                                    variant="contained"
-                                    onClick={handleSubmitVote}
-                                    disabled={voting || !reason.trim()}
-                                >
-                                    Confirmar Voto
-                                </Button>
-                            </Paper>
+                {/* Video Evidence Section */}
+                <Paper elevation={0} sx={{ p: 2 }}>
+                    <Typography variant="subtitle1" fontWeight="bold" gutterBottom>Provas de Vídeo</Typography>
+                    <Stack spacing={2}>
+                        {protest.videoUrls && protest.videoUrls.length > 0 ? (
+                            protest.videoUrls.map((url, i) => (
+                                <Box key={i} sx={{ width: '100%', borderRadius: 2, overflow: 'hidden', bgcolor: '#000' }}>
+                                    {isVideoFile(url) ? (
+                                        <video controls width="100%" style={{ maxHeight: '300px' }}>
+                                            <source src={url} type="video/mp4" />
+                                            Seu navegador não suporta o elemento de vídeo.
+                                        </video>
+                                    ) : (
+                                        <Box sx={{ position: 'relative', paddingTop: '56.25%' }}>
+                                            <iframe
+                                                style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 0 }}
+                                                src={getEmbedUrl(url)}
+                                                title={`Video ${i + 1}`}
+                                                allowFullScreen
+                                            />
+                                        </Box>
+                                    )}
+                                </Box>
+                            ))
+                        ) : (
+                            <Typography color="text.secondary">Nenhum vídeo anexado.</Typography>
                         )}
+                    </Stack>
+                </Paper>
 
-                        {hasVoted && lifecyclePhase === 'voting' && (
-                            <Alert severity="success" sx={{ mb: 3 }}>Você já votou neste protesto.</Alert>
-                        )}
-
-                        {lifecyclePhase === 'concluded' && (
-                            <Alert severity="info" sx={{ mb: 3 }}>Votação encerrada.</Alert>
-                        )}
-
-                        <Typography variant="subtitle1" gutterBottom>Votos Registrados ({votes.length})</Typography>
-                        <List>
+                {/* Votes List */}
+                {votes.length > 0 && (
+                    <Paper elevation={0} sx={{ p: 2 }}>
+                        <Typography variant="subtitle1" fontWeight="bold" gutterBottom>Votos dos Comissários</Typography>
+                        <List disablePadding>
                             {votes.map((vote, index) => (
-                                <Paper key={index} sx={{ mb: 1, p: 1 }}>
-                                    <ListItem alignItems="flex-start">
-                                        <ListItemText
-                                            primary={
-                                                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                                                    <Typography fontWeight="bold">{vote.adminName}</Typography>
-                                                    <Chip
-                                                        label={vote.verdict === 'punish' ? 'PUNIR' : 'ABSOLVER'}
-                                                        color={vote.verdict === 'punish' ? 'error' : 'success'}
-                                                        size="small"
-                                                    />
-                                                </Box>
-                                            }
-                                            secondary={
-                                                <>
-                                                    <Typography variant="body2" color="text.secondary">
-                                                        {new Date(vote.createdAt).toLocaleString()}
-                                                    </Typography>
-                                                    <Typography variant="body1" sx={{ mt: 1 }}>
-                                                        {vote.reason}
-                                                    </Typography>
-                                                </>
-                                            }
-                                        />
-                                    </ListItem>
-                                </Paper>
+                                <ListItem key={index} alignItems="flex-start" sx={{ px: 0 }}>
+                                    <ListItemText
+                                        primary={
+                                            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                <Typography variant="body2" fontWeight="bold">{vote.adminName}</Typography>
+                                                <Chip
+                                                    label={vote.verdict === 'punish' ? 'PUNIR' : 'ABSOLVER'}
+                                                    color={vote.verdict === 'punish' ? 'error' : 'success'}
+                                                    size="small"
+                                                    variant="outlined"
+                                                />
+                                            </Box>
+                                        }
+                                        secondary={
+                                            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                                                {vote.reason}
+                                            </Typography>
+                                        }
+                                    />
+                                </ListItem>
                             ))}
                         </List>
-                    </Box>
+                    </Paper>
+                )}
+            </Stack>
 
-                    {/* Result Section */}
-                    <Box sx={{ flex: 1 }}>
-                        <Typography variant="h5" gutterBottom>Resultado</Typography>
+            {/* Sticky Footer for Voting */}
+            {lifecyclePhase === 'voting' && !hasVoted && (
+                <Paper
+                    sx={{
+                        position: 'fixed',
+                        bottom: 0,
+                        left: 0,
+                        right: 0,
+                        p: 2,
+                        zIndex: 1100,
+                        borderTop: '1px solid rgba(255,255,255,0.1)',
+                        bgcolor: 'background.paper'
+                    }}
+                    elevation={10}
+                >
+                    {!showVoteForm ? (
+                        <Button
+                            variant="contained"
+                            color="primary"
+                            fullWidth
+                            size="large"
+                            onClick={() => setShowVoteForm(true)}
+                        >
+                            VOTAR AGORA
+                        </Button>
+                    ) : (
+                        <Box>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                                <Typography variant="h6">Registrar Voto</Typography>
+                                <Button size="small" onClick={() => setShowVoteForm(false)}>Cancelar</Button>
+                            </Box>
 
-                        {protest.status === 'concluded' || protest.status === 'inconclusive' ? (
-                            <Paper sx={{ p: 4, textAlign: 'center', bgcolor: protest.verdict === 'Punido' ? '#ffebee' : '#e8f5e9' }}>
-                                <Typography variant="h3" gutterBottom>
-                                    {protest.verdict}
-                                </Typography>
-                                <Typography variant="body1">
-                                    Julgamento encerrado automaticamente.
-                                </Typography>
-                            </Paper>
-                        ) : (
-                            <Paper sx={{ p: 3, textAlign: 'center' }}>
-                                <Typography variant="body1" paragraph>
-                                    O julgamento está em andamento.
-                                </Typography>
-                                <Typography variant="caption" color="text.secondary">
-                                    O veredito será calculado automaticamente após 48h do evento.
-                                </Typography>
-                            </Paper>
-                        )}
-                    </Box>
-                </Box>
+                            <FormControl component="fieldset" fullWidth sx={{ mb: 2 }}>
+                                <RadioGroup row value={verdict} onChange={(e) => setVerdict(e.target.value as any)} sx={{ justifyContent: 'space-around' }}>
+                                    <FormControlLabel
+                                        value="punish"
+                                        control={<Radio color="error" />}
+                                        label={<Typography color="error" fontWeight="bold">PUNIR</Typography>}
+                                    />
+                                    <FormControlLabel
+                                        value="acquit"
+                                        control={<Radio color="success" />}
+                                        label={<Typography color="success" fontWeight="bold">ABSOLVER</Typography>}
+                                    />
+                                </RadioGroup>
+                            </FormControl>
+
+                            <TextField
+                                label="Justificativa (Obrigatório)"
+                                multiline
+                                rows={2}
+                                fullWidth
+                                value={reason}
+                                onChange={(e) => setReason(e.target.value)}
+                                sx={{ mb: 2 }}
+                                variant="filled"
+                            />
+
+                            <Button
+                                variant="contained"
+                                fullWidth
+                                size="large"
+                                onClick={handleSubmitVote}
+                                disabled={voting || !reason.trim()}
+                                sx={{
+                                    bgcolor: verdict === 'punish' ? 'error.main' : 'success.main',
+                                    '&:hover': {
+                                        bgcolor: verdict === 'punish' ? 'error.dark' : 'success.dark',
+                                    }
+                                }}
+                            >
+                                CONFIRMAR {verdict === 'punish' ? 'PUNIÇÃO' : 'ABSOLVIÇÃO'}
+                            </Button>
+                        </Box>
+                    )}
+                </Paper>
             )}
 
             <Snackbar open={snackbar.open} autoHideDuration={6000} onClose={() => setSnackbar({ ...snackbar, open: false })}>

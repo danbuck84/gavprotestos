@@ -1,17 +1,20 @@
 
 import { useState, useEffect } from 'react';
-import { Container, Typography, Box, Button, Alert, CircularProgress, List, ListItem, ListItemText, IconButton, Divider, Paper, Chip } from '@mui/material';
+import { Container, Typography, Box, Button, Alert, CircularProgress, List, ListItem, ListItemText, IconButton, Divider, Paper, Chip, useMediaQuery, useTheme } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { parseRaceJson } from '../services/raceParser';
 import { collection, addDoc, query, where, getDocs, deleteDoc, doc, onSnapshot, orderBy } from 'firebase/firestore';
 import { db } from '../firebase';
 import type { Race, Protest } from '../types';
 import NotificationBell from '../components/NotificationBell';
+import ProtestCard from '../components/ProtestCard';
 
 import { useNavigate } from 'react-router-dom';
 
 export default function AdminPainel() {
     const navigate = useNavigate();
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const [uploading, setUploading] = useState(false);
     const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
     const [races, setRaces] = useState<Race[]>([]);
@@ -182,6 +185,12 @@ export default function AdminPainel() {
                 <Typography variant="h5" gutterBottom>Todos os Protestos</Typography>
                 {protests.length === 0 ? (
                     <Typography color="text.secondary">Nenhum protesto registrado.</Typography>
+                ) : isMobile ? (
+                    <Box>
+                        {protests.map((protest) => (
+                            <ProtestCard key={protest.id} protest={protest} isAdminView={true} />
+                        ))}
+                    </Box>
                 ) : (
                     <Paper elevation={2}>
                         <List>
@@ -194,14 +203,14 @@ export default function AdminPainel() {
                                                     <Typography variant="subtitle1" fontWeight="bold">
                                                         <span
                                                             style={{ cursor: 'pointer', textDecoration: 'underline' }}
-                                                            onClick={() => navigate(`/ admin / piloto / ${protest.accuserId} `)}
+                                                            onClick={() => navigate(`/admin/piloto/${protest.accuserId}`)}
                                                         >
                                                             {protest.accuserId}
                                                         </span>
                                                         {' vs '}
                                                         <span
                                                             style={{ cursor: 'pointer', textDecoration: 'underline' }}
-                                                            onClick={() => navigate(`/ admin / piloto / ${protest.accusedId} `)}
+                                                            onClick={() => navigate(`/admin/piloto/${protest.accusedId}`)}
                                                         >
                                                             {protest.accusedId}
                                                         </span>
@@ -213,7 +222,7 @@ export default function AdminPainel() {
                                                             color="primary"
                                                             onClick={(e) => {
                                                                 e.stopPropagation();
-                                                                navigate(`/ admin / julgamento / ${protest.id} `);
+                                                                navigate(`/admin/julgamento/${protest.id}`);
                                                             }}
                                                         >
                                                             Julgar
