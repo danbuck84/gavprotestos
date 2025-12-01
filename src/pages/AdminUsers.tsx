@@ -6,7 +6,7 @@ import {
 import { collection, getDocs, doc, updateDoc } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import type { User } from '../types';
-import { isAdmin, isSuperAdmin, SUPER_ADMIN_ID } from '../utils/permissions';
+import { isSuperAdmin } from '../utils/permissions';
 import { useNavigate } from 'react-router-dom';
 
 export default function AdminUsers() {
