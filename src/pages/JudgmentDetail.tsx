@@ -4,17 +4,21 @@ import {
     Container, Typography, Box, Paper, Button, TextField,
     FormControl, RadioGroup, FormControlLabel, Radio,
     CircularProgress, Chip, List, ListItem, ListItemText, Alert, Snackbar,
-    Stack
+    Stack, Dialog, DialogTitle, DialogContent, DialogActions
 } from '@mui/material';
-import { doc, collection, addDoc, onSnapshot, updateDoc, getDoc } from 'firebase/firestore';
-import { db, auth } from '../firebase';
+import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
+import GavelIcon from '@mui/icons-material/Gavel';
+import { doc, collection, addDoc, onSnapshot, updateDoc, getDoc, deleteDoc } from 'firebase/firestore';
+import { ref, deleteObject } from 'firebase/storage';
+import { db, auth, storage } from '../firebase';
 import type { Protest, Vote, ProtestStatus, Race } from '../types';
+import { isSuperAdmin } from '../utils/permissions';
 
 export default function JudgmentDetail() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
-    // const theme = useTheme();
-    // const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
     const [protest, setProtest] = useState<Protest | null>(null);
     const [race, setRace] = useState<Race | null>(null);
@@ -30,7 +34,17 @@ export default function JudgmentDetail() {
     const [verdict, setVerdict] = useState<'punish' | 'acquit'>('punish');
     const [reason, setReason] = useState('');
     const [hasVoted, setHasVoted] = useState(false);
-    const [showVoteForm, setShowVoteForm] = useState(false); // Toggle for mobile sticky footer
+    const [showVoteForm, setShowVoteForm] = useState(false);
+
+    // Super Admin State
+    const [isSuper, setIsSuper] = useState(false);
+    const [openEditDialog, setOpenEditDialog] = useState(false);
+    const [editForm, setEditForm] = useState({
+        description: '',
+        videoUrls: '',
+        incidentType: '',
+        heat: ''
+    });
 
     const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
         open: false, message: '', severity: 'success'
@@ -43,6 +57,14 @@ export default function JudgmentDetail() {
             if (docSnap.exists()) {
                 const protestData = { id: docSnap.id, ...docSnap.data() } as Protest;
                 setProtest(protestData);
+
+                // Initialize edit form
+                setEditForm({
+                    description: protestData.description,
+                    videoUrls: protestData.videoUrls ? protestData.videoUrls.join('\n') : '',
+                    incidentType: protestData.incidentType,
+                    heat: protestData.heat
+                });
 
                 if (protestData.raceId) {
                     const raceDoc = await getDoc(doc(db, 'races', protestData.raceId));
@@ -64,6 +86,7 @@ export default function JudgmentDetail() {
             if (auth.currentUser) {
                 const myVote = votesData.find(v => v.adminId === auth.currentUser?.uid);
                 setHasVoted(!!myVote);
+                setIsSuper(isSuperAdmin(auth.currentUser.uid));
             }
         });
 
@@ -165,6 +188,62 @@ export default function JudgmentDetail() {
         }
     };
 
+    // Super Admin Actions
+    const handleForceStatus = async (newStatus: ProtestStatus) => {
+        if (!protest) return;
+        try {
+            await updateDoc(doc(db, 'protests', protest.id), { status: newStatus });
+            setSnackbar({ open: true, message: `Status alterado para ${newStatus}`, severity: 'success' });
+        } catch (error) {
+            console.error("Error forcing status:", error);
+            setSnackbar({ open: true, message: 'Erro ao alterar status.', severity: 'error' });
+        }
+    };
+
+    const handleSaveEdit = async () => {
+        if (!protest) return;
+        try {
+            const videoUrlsArray = editForm.videoUrls.split('\n').filter(url => url.trim() !== '');
+            await updateDoc(doc(db, 'protests', protest.id), {
+                description: editForm.description,
+                videoUrls: videoUrlsArray,
+                incidentType: editForm.incidentType as any,
+                heat: editForm.heat as any
+            });
+            setOpenEditDialog(false);
+            setSnackbar({ open: true, message: 'Protesto atualizado com sucesso!', severity: 'success' });
+        } catch (error) {
+            console.error("Error updating protest:", error);
+            setSnackbar({ open: true, message: 'Erro ao atualizar protesto.', severity: 'error' });
+        }
+    };
+
+    const handleDeleteProtest = async () => {
+        if (!protest || !window.confirm("TEM CERTEZA? Isso apagará o protesto e os vídeos permanentemente.")) return;
+
+        try {
+            // Try to delete videos if they are stored in Firebase Storage
+            if (protest.videoUrls) {
+                for (const url of protest.videoUrls) {
+                    if (url.includes('firebasestorage')) {
+                        try {
+                            const videoRef = ref(storage, url);
+                            await deleteObject(videoRef);
+                        } catch (e) {
+                            console.warn("Could not delete video:", url, e);
+                        }
+                    }
+                }
+            }
+
+            await deleteDoc(doc(db, 'protests', protest.id));
+            navigate('/admin');
+        } catch (error) {
+            console.error("Error deleting protest:", error);
+            setSnackbar({ open: true, message: 'Erro ao excluir protesto.', severity: 'error' });
+        }
+    };
+
     const getEmbedUrl = (url: string) => {
         if (url.includes('youtube.com') || url.includes('youtu.be')) {
             let videoId = '';
@@ -190,10 +269,66 @@ export default function JudgmentDetail() {
     if (!protest) return null;
 
     return (
-        <Container maxWidth="md" sx={{ mt: 2, mb: 12 }}> {/* Added mb: 12 for sticky footer space */}
-            <Button onClick={() => navigate('/admin')} sx={{ mb: 2 }}>&lt; Voltar</Button>
-
+        <Container maxWidth="md" sx={{ mt: 2, mb: 12 }}>
             <Stack spacing={3}>
+                {/* Timer Section */}
+                {timeRemaining && (
+                    <Alert
+                        icon={<AccessTimeIcon fontSize="inherit" />}
+                        severity={timeRemaining.includes('encerrar') && !timeRemaining.includes('Votação Encerrada') ? 'warning' : 'info'}
+                        variant="filled"
+                        sx={{ width: '100%', fontWeight: 'bold', justifyContent: 'center' }}
+                    >
+                        {timeRemaining}
+                    </Alert>
+                )}
+
+                {/* Super Admin Actions */}
+                {isSuper && (
+                    <Paper elevation={0} sx={{ p: 2, border: '1px dashed #f44336', bgcolor: 'rgba(244, 67, 54, 0.05)' }}>
+                        <Typography variant="subtitle2" color="error" fontWeight="bold" gutterBottom>
+                            SUPER ADMIN ZONE
+                        </Typography>
+                        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                            <Button
+                                variant="outlined"
+                                color="primary"
+                                size="small"
+                                startIcon={<EditIcon />}
+                                onClick={() => setOpenEditDialog(true)}
+                            >
+                                Editar
+                            </Button>
+                            <Button
+                                variant="outlined"
+                                color="warning"
+                                size="small"
+                                startIcon={<GavelIcon />}
+                                onClick={() => handleForceStatus('concluded')}
+                            >
+                                Forçar Conclusão
+                            </Button>
+                            <Button
+                                variant="outlined"
+                                color="info"
+                                size="small"
+                                onClick={() => handleForceStatus('pending')}
+                            >
+                                Forçar Pendente
+                            </Button>
+                            <Button
+                                variant="contained"
+                                color="error"
+                                size="small"
+                                startIcon={<DeleteIcon />}
+                                onClick={handleDeleteProtest}
+                            >
+                                EXCLUIR
+                            </Button>
+                        </Box>
+                    </Paper>
+                )}
+
                 {/* Header Section */}
                 <Paper elevation={0} sx={{ p: 2, bgcolor: 'background.paper', borderRadius: 2 }}>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -211,11 +346,6 @@ export default function JudgmentDetail() {
                             color={protest.status === 'concluded' ? (protest.verdict === 'Punido' ? 'error' : 'success') : 'warning'}
                             size="small"
                         />
-                        {timeRemaining && (
-                            <Typography variant="caption" display="block" color="text.secondary" sx={{ mt: 0.5, textAlign: 'right' }}>
-                                {timeRemaining}
-                            </Typography>
-                        )}
                     </Box>
                     <Box sx={{ mt: 2, p: 1.5, bgcolor: 'rgba(255,255,255,0.05)', borderRadius: 1 }}>
                         <Typography variant="body2" fontWeight="bold">Incidente:</Typography>
@@ -370,6 +500,48 @@ export default function JudgmentDetail() {
                     )}
                 </Paper>
             )}
+
+            {/* Edit Dialog */}
+            <Dialog open={openEditDialog} onClose={() => setOpenEditDialog(false)} fullWidth maxWidth="sm">
+                <DialogTitle>Editar Protesto</DialogTitle>
+                <DialogContent>
+                    <Stack spacing={2} sx={{ mt: 1 }}>
+                        <TextField
+                            label="Descrição"
+                            multiline
+                            rows={4}
+                            fullWidth
+                            value={editForm.description}
+                            onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                        />
+                        <TextField
+                            label="Links de Vídeo (um por linha)"
+                            multiline
+                            rows={3}
+                            fullWidth
+                            value={editForm.videoUrls}
+                            onChange={(e) => setEditForm({ ...editForm, videoUrls: e.target.value })}
+                            helperText="Cole os links do YouTube ou URLs diretas, separados por quebra de linha."
+                        />
+                        <TextField
+                            label="Tipo de Incidente"
+                            fullWidth
+                            value={editForm.incidentType}
+                            onChange={(e) => setEditForm({ ...editForm, incidentType: e.target.value })}
+                        />
+                        <TextField
+                            label="Bateria"
+                            fullWidth
+                            value={editForm.heat}
+                            onChange={(e) => setEditForm({ ...editForm, heat: e.target.value })}
+                        />
+                    </Stack>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setOpenEditDialog(false)}>Cancelar</Button>
+                    <Button onClick={handleSaveEdit} variant="contained">Salvar</Button>
+                </DialogActions>
+            </Dialog>
 
             <Snackbar open={snackbar.open} autoHideDuration={6000} onClose={() => setSnackbar({ ...snackbar, open: false })}>
                 <Alert severity={snackbar.severity} sx={{ width: '100%' }}>

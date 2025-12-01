@@ -5,7 +5,7 @@ import { Outlet } from 'react-router-dom';
 
 export default function MainLayout() {
     return (
-        <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', pb: { xs: 7, md: 0 } }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', pb: { xs: 10, md: 0 } }}>
             <Header />
             <Box component="main" sx={{ flexGrow: 1, p: 2 }}>
                 <Outlet />

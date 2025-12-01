@@ -5,8 +5,12 @@ import { auth } from '../firebase';
 import { signOut } from 'firebase/auth';
 import { useState } from 'react';
 
+import { useLocation } from 'react-router-dom';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+
 export default function Header() {
     const navigate = useNavigate();
+    const location = useLocation();
     const user = auth.currentUser;
     const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
@@ -32,13 +36,26 @@ export default function Header() {
     return (
         <AppBar position="static" color="transparent" elevation={0}>
             <Toolbar sx={{ justifyContent: 'space-between' }}>
-                <Box
-                    component="img"
-                    src="/gavprotestos-logo.png"
-                    alt="GAV Protestos"
-                    sx={{ height: 40, cursor: 'pointer' }}
-                    onClick={() => navigate('/')}
-                />
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    {location.pathname !== '/' && (
+                        <IconButton
+                            edge="start"
+                            color="inherit"
+                            aria-label="back"
+                            onClick={() => navigate(-1)}
+                            sx={{ mr: 1 }}
+                        >
+                            <ArrowBackIcon />
+                        </IconButton>
+                    )}
+                    <Box
+                        component="img"
+                        src="/gavprotestos-logo.png"
+                        alt="GAV Protestos"
+                        sx={{ height: 40, cursor: 'pointer' }}
+                        onClick={() => navigate('/')}
+                    />
+                </Box>
 
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                     {user && <NotificationBell />}
