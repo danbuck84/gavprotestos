@@ -4,7 +4,7 @@ import {
     Container, Typography, Box, Paper, Button, TextField,
     FormControl, RadioGroup, FormControlLabel, Radio,
     CircularProgress, Chip, List, ListItem, ListItemText, Alert, Snackbar,
-    useTheme, useMediaQuery, Stack, Divider
+    Stack
 } from '@mui/material';
 import { doc, collection, addDoc, onSnapshot, updateDoc, getDoc } from 'firebase/firestore';
 import { db, auth } from '../firebase';
@@ -13,8 +13,8 @@ import type { Protest, Vote, ProtestStatus, Race } from '../types';
 export default function JudgmentDetail() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
-    const theme = useTheme();
-    const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+    // const theme = useTheme();
+    // const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
     const [protest, setProtest] = useState<Protest | null>(null);
     const [race, setRace] = useState<Race | null>(null);
@@ -211,6 +211,11 @@ export default function JudgmentDetail() {
                             color={protest.status === 'concluded' ? (protest.verdict === 'Punido' ? 'error' : 'success') : 'warning'}
                             size="small"
                         />
+                        {timeRemaining && (
+                            <Typography variant="caption" display="block" color="text.secondary" sx={{ mt: 0.5, textAlign: 'right' }}>
+                                {timeRemaining}
+                            </Typography>
+                        )}
                     </Box>
                     <Box sx={{ mt: 2, p: 1.5, bgcolor: 'rgba(255,255,255,0.05)', borderRadius: 1 }}>
                         <Typography variant="body2" fontWeight="bold">Incidente:</Typography>
