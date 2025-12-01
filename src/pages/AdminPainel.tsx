@@ -113,6 +113,16 @@ export default function AdminPainel() {
             <Typography variant="h4" gutterBottom>Painel Administrativo</Typography>
             <Typography variant="body1" paragraph>Área restrita para comissários.</Typography>
 
+            <Box sx={{ mb: 4 }}>
+                <Button
+                    variant="outlined"
+                    color="primary"
+                    onClick={() => navigate('/admin/usuarios')}
+                >
+                    Gerenciar Usuários
+                </Button>
+            </Box>
+
             <Box sx={{ mt: 4, p: 3, border: '1px dashed grey', borderRadius: 2 }}>
                 <Typography variant="h6" gutterBottom>Importar Resultado de Corrida</Typography>
                 <Typography variant="body2" color="text.secondary" paragraph>
@@ -183,7 +193,19 @@ export default function AdminPainel() {
                                             primary={
                                                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                                     <Typography variant="subtitle1" fontWeight="bold">
-                                                        {protest.accuserId} vs {protest.accusedId}
+                                                        <span
+                                                            style={{ cursor: 'pointer', textDecoration: 'underline' }}
+                                                            onClick={() => navigate(`/admin/piloto/${protest.accuserId}`)}
+                                                        >
+                                                            {protest.accuserId}
+                                                        </span>
+                                                        {' vs '}
+                                                        <span
+                                                            style={{ cursor: 'pointer', textDecoration: 'underline' }}
+                                                            onClick={() => navigate(`/admin/piloto/${protest.accusedId}`)}
+                                                        >
+                                                            {protest.accusedId}
+                                                        </span>
                                                     </Typography>
                                                     <Chip
                                                         label={protest.status.toUpperCase()}

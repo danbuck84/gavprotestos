@@ -4,6 +4,9 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import NovoProtesto from './pages/NovoProtesto';
 import AdminPainel from './pages/AdminPainel';
+import ProtectedRoute from './components/ProtectedRoute';
+import AdminUsers from './pages/AdminUsers';
+import DriverProfile from './pages/DriverProfile';
 
 const darkTheme = createTheme({
   palette: {
@@ -44,7 +47,30 @@ function App() {
           <Route path="/" element={<Dashboard />} />
           <Route path="/login" element={<Login />} />
           <Route path="/novo-protesto" element={<NovoProtesto />} />
-          <Route path="/admin" element={<AdminPainel />} />
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute>
+                <AdminPainel />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/usuarios"
+            element={
+              <ProtectedRoute>
+                <AdminUsers />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/piloto/:id"
+            element={
+              <ProtectedRoute>
+                <DriverProfile />
+              </ProtectedRoute>
+            }
+          />
         </Routes>
       </BrowserRouter>
     </ThemeProvider>
