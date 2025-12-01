@@ -4,7 +4,7 @@ import { Container, Typography, Box, Button, Alert, CircularProgress, List, List
 import DeleteIcon from '@mui/icons-material/Delete';
 import { parseRaceJson } from '../services/raceParser';
 import { collection, addDoc, query, where, getDocs, deleteDoc, doc, onSnapshot, orderBy } from 'firebase/firestore';
-import { db, auth } from '../firebase';
+import { db } from '../firebase';
 import type { Race, Protest } from '../types';
 import NotificationBell from '../components/NotificationBell';
 
@@ -103,9 +103,12 @@ export default function AdminPainel() {
 
     return (
         <Container maxWidth="md" sx={{ mt: 4, mb: 8 }}>
-            <Button onClick={() => navigate('/')} sx={{ mb: 2 }}>
-                &lt; Voltar
-            </Button>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <Button onClick={() => navigate('/')}>
+                    &lt; Voltar
+                </Button>
+                <NotificationBell />
+            </Box>
             <Typography variant="h4" gutterBottom>Painel Administrativo</Typography>
             <Typography variant="body1" paragraph>Área restrita para comissários.</Typography>
 

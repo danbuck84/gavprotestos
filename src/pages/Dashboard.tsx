@@ -5,7 +5,7 @@ import { auth, db } from '../firebase';
 import { onAuthStateChanged, signOut, updateProfile, type User } from 'firebase/auth';
 import { collection, query, where, getDocs, orderBy, doc, setDoc } from 'firebase/firestore';
 import type { Protest } from '../types';
-import { isAdmin as checkIsAdmin } from '../utils/permissions';
+
 import NotificationBell from '../components/NotificationBell';
 
 export default function Dashboard() {

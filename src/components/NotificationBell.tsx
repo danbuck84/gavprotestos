@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import {
     IconButton, Badge, Menu, MenuItem, Typography, Box,
-    List, ListItem, ListItemText, Divider, ListItemButton
+    List, ListItemText, Divider, ListItemButton
 } from '@mui/material';
 import NotificationsIcon from '@mui/icons-material/Notifications';
-import { collection, query, where, orderBy, onSnapshot, updateDoc, doc, limit } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, updateDoc, doc, limit } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { useNavigate } from 'react-router-dom';
 

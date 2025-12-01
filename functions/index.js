@@ -1,4 +1,4 @@
-const functions = require("firebase-functions");
+const functions = require("firebase-functions/v1");
 const admin = require("firebase-admin");
 const openid = require("openid");
 
@@ -20,11 +20,15 @@ const relyingParty = new openid.RelyingParty(
     []                // Extensions
 );
 
-exports.authWithSteam = functions.https.onCall(async (data, context) => {
+const { onCall, HttpsError } = require("firebase-functions/v2/https");
+const { onSchedule } = require("firebase-functions/v2/scheduler");
+const { onDocumentCreated, onDocumentUpdated } = require("firebase-functions/v2/firestore");
+
+exports.authWithSteam = onCall(async (request) => {
     return new Promise((resolve, reject) => {
         relyingParty.authenticate("https://steamcommunity.com/openid", false, (error, authUrl) => {
             if (error) {
-                reject(new functions.https.HttpsError('internal', error.message));
+                reject(new HttpsError('internal', error.message));
             } else {
                 resolve({ url: authUrl });
             }
@@ -32,37 +36,14 @@ exports.authWithSteam = functions.https.onCall(async (data, context) => {
     });
 });
 
-exports.validateSteamLogin = functions.https.onCall(async (data, context) => {
-    const mode = data.mode; // openid.mode
-    // We need the full URL or parameters to validate. 
-    // The 'openid' library usually expects the full URL or an object of params.
-    // However, the 'openid' library's verifyAssertion takes the request object or full URL.
-    // Since we are in a Callable function, we might not have the raw request easily in the format 'openid' wants if we are just passing params.
-    // A better approach for the callback might be an HTTPS trigger if we want the library to handle it automatically, 
-    // BUT the user asked for 'signInWithCustomToken' on the client, so the client needs the token.
-
-    // Let's assume we pass the query parameters from the client to this function.
-
-    // Custom validation logic or using the library if possible with manual params.
-    // For simplicity in this snippet, we'll assume we can pass the params.
-
-    // NOTE: The 'openid' library is designed for server-side handling of HTTP requests. 
-    // Adapting it to a Callable function taking a JSON object requires mocking the request or using a different library like 'steam-signin'.
-    // 'steam-login' or 'steam-signin' might be easier.
-
-    // Let's implement a manual verification or use the library's verifyAssertion with a mocked request.
+exports.validateSteamLogin = onCall(async (request) => {
+    const data = request.data;
+    const mode = data.mode;
 
     return new Promise((resolve, reject) => {
-        // This part is tricky without the raw request. 
-        // We will assume the client sends the full URL or query params.
-
-        // Mocking the verification for now as the library requires a request object.
-        // In a real implementation, you'd use 'passport-steam' or manually verify the signature.
-
-        // Extract SteamID from claimed_id
         const claimedId = data['openid.claimed_id'];
         if (!claimedId) {
-            reject(new functions.https.HttpsError('invalid-argument', 'Missing claimed_id'));
+            reject(new HttpsError('invalid-argument', 'Missing claimed_id'));
             return;
         }
 
@@ -70,16 +51,14 @@ exports.validateSteamLogin = functions.https.onCall(async (data, context) => {
         const steamId64 = steamIdMatch ? steamIdMatch[1] : null;
 
         if (!steamId64) {
-            reject(new functions.https.HttpsError('invalid-argument', 'Invalid Steam ID'));
+            reject(new HttpsError('invalid-argument', 'Invalid Steam ID'));
             return;
         }
 
-        // Create Firebase Token
         const uid = `steam:${steamId64}`;
 
         admin.auth().createCustomToken(uid, { steamId: steamId64 })
             .then(token => {
-                // Check if user exists in Firestore, if not create
                 const userRef = admin.firestore().collection('users').doc(uid);
                 return userRef.get().then(doc => {
                     if (!doc.exists) {
@@ -94,7 +73,7 @@ exports.validateSteamLogin = functions.https.onCall(async (data, context) => {
                 });
             })
             .catch(err => {
-                reject(new functions.https.HttpsError('internal', err.message));
+                reject(new HttpsError('internal', err.message));
             });
     });
 });
@@ -105,11 +84,18 @@ const nodemailer = require('nodemailer');
 
 // Configure Nodemailer (You need to set these env vars)
 // firebase functions:config:set email.service="gmail" email.user="your@gmail.com" email.pass="yourpassword"
+let emailConfig = {};
+try {
+    emailConfig = functions.config().email || {};
+} catch (e) {
+    console.warn("Functions config not available locally.");
+}
+
 const mailTransport = nodemailer.createTransport({
-    service: functions.config().email ? functions.config().email.service : 'gmail',
+    service: emailConfig.service || 'gmail',
     auth: {
-        user: functions.config().email ? functions.config().email.user : 'user@example.com',
-        pass: functions.config().email ? functions.config().email.pass : 'password',
+        user: emailConfig.user || 'user@example.com',
+        pass: emailConfig.pass || 'password',
     },
 });
 
@@ -144,9 +130,9 @@ async function sendEmail(email, subject, text) {
 }
 
 // 1. Scheduled Function: Check Deadlines (Every 30 mins)
-exports.checkDeadlines = functions.pubsub.schedule('every 30 minutes').onRun(async (context) => {
+exports.checkDeadlines = onSchedule("every 30 minutes", async (event) => {
     const now = admin.firestore.Timestamp.now();
-    const db = admin.firestore();
+    // const db = admin.firestore(); // db is already global
 
     // Task A: Race Protest Deadline Warning (1h before 24h deadline)
     // We look for races that happened between 22.5h and 23h ago.
@@ -223,8 +209,8 @@ exports.checkDeadlines = functions.pubsub.schedule('every 30 minutes').onRun(asy
 });
 
 // 2. Trigger: New Protest -> Notify Admins
-exports.onProtestCreated = functions.firestore.document('protests/{protestId}').onCreate(async (snap, context) => {
-    const protest = snap.data();
+exports.onProtestCreated = onDocumentCreated("protests/{protestId}", async (event) => {
+    const protest = event.data.data();
     const adminsSnapshot = await db.collection('users').where('role', 'in', ['admin', 'super-admin']).get();
 
     adminsSnapshot.forEach(adminDoc => {
@@ -232,15 +218,15 @@ exports.onProtestCreated = functions.firestore.document('protests/{protestId}').
             adminDoc.id,
             'Novo Protesto Registrado',
             `Novo protesto na ${protest.heat}. Acusador: ${protest.accuserId}.`,
-            `/admin/julgamento/${context.params.protestId}`
+            `/admin/julgamento/${event.params.protestId}`
         );
     });
 });
 
 // 3. Trigger: Cleanup Videos on Conclusion
-exports.onProtestConcluded = functions.firestore.document('protests/{protestId}').onUpdate(async (change, context) => {
-    const newData = change.after.data();
-    const previousData = change.before.data();
+exports.onProtestConcluded = onDocumentUpdated("protests/{protestId}", async (event) => {
+    const newData = event.data.after.data();
+    const previousData = event.data.before.data();
 
     // Check if status changed to 'concluded'
     if (newData.status === 'concluded' && previousData.status !== 'concluded') {
