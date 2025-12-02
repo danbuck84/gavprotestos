@@ -54,8 +54,9 @@ export default function AdminRaceDetail() {
     }, [raceId]);
 
     const getFilteredProtests = () => {
+        if (!protests || protests.length === 0) return [];
         if (filter === 'all') return protests;
-        return protests.filter(p => p.status === filter);
+        return protests.filter(p => p?.status === filter);
     };
 
     const filteredProtests = getFilteredProtests();
@@ -100,25 +101,25 @@ export default function AdminRaceDetail() {
             {/* Filters */}
             <Box sx={{ display: 'flex', gap: 1, mb: 3, flexWrap: 'wrap' }}>
                 <Chip
-                    label={`Todos (${protests.length})`}
+                    label={`Todos (${protests?.length || 0})`}
                     onClick={() => setFilter('all')}
                     color={filter === 'all' ? 'primary' : 'default'}
                     variant={filter === 'all' ? 'filled' : 'outlined'}
                 />
                 <Chip
-                    label={`Pendentes (${protests.filter(p => p.status === 'pending').length})`}
+                    label={`Pendentes (${protests?.filter(p => p.status === 'pending').length || 0})`}
                     onClick={() => setFilter('pending')}
                     color={filter === 'pending' ? 'warning' : 'default'}
                     variant={filter === 'pending' ? 'filled' : 'outlined'}
                 />
                 <Chip
-                    label={`Em Votação (${protests.filter(p => p.status === 'under_review').length})`}
+                    label={`Em Votação (${protests?.filter(p => p.status === 'under_review').length || 0})`}
                     onClick={() => setFilter('under_review')}
                     color={filter === 'under_review' ? 'info' : 'default'}
                     variant={filter === 'under_review' ? 'filled' : 'outlined'}
                 />
                 <Chip
-                    label={`Concluídos (${protests.filter(p => p.status === 'concluded').length})`}
+                    label={`Concluídos (${protests?.filter(p => p.status === 'concluded').length || 0})`}
                     onClick={() => setFilter('concluded')}
                     color={filter === 'concluded' ? 'success' : 'default'}
                     variant={filter === 'concluded' ? 'filled' : 'outlined'}

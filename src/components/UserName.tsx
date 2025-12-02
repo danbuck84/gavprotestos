@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 import { Typography, Skeleton } from '@mui/material';
-import type { User } from '../types';
+import type { User, Race } from '../types';
 
 interface UserNameProps {
     uid: string;
@@ -28,23 +28,54 @@ export default function UserName({ uid, variant = 'body1', fontWeight, color }: 
         const fetchUser = async () => {
             try {
                 // Handle potential 'steam:' prefix if it exists in the ID but not in the doc ID
-                // Assuming doc IDs are just the numbers or the full string. 
-                // Based on previous context, IDs might be just numbers.
                 const cleanId = uid.replace('steam:', '');
 
+                // PRIORITY 1: Check all races for driver name (most reliable)
+                try {
+                    const racesSnapshot = await getDocs(collection(db, 'races'));
+                    let foundName: string | null = null;
+
+                    for (const raceDoc of racesSnapshot.docs) {
+                        const race = raceDoc.data() as Race;
+                        if (race.drivers && Array.isArray(race.drivers)) {
+                            const driver = race.drivers.find(d =>
+                                d.steamId === cleanId || d.steamId === uid || d.steamId === `steam:${cleanId}`
+                            );
+                            if (driver && driver.name) {
+                                foundName = driver.name;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (foundName) {
+                        userCache[uid] = foundName;
+                        setName(foundName);
+                        setLoading(false);
+                        return;
+                    }
+                } catch (raceError) {
+                    console.warn('Error searching races for driver name:', raceError);
+                }
+
+                // PRIORITY 2: Check Firestore users collection
                 const userDoc = await getDoc(doc(db, 'users', cleanId));
                 if (userDoc.exists()) {
                     const userData = userDoc.data() as User;
-                    const displayName = userData.displayName || `User ${cleanId.slice(-4)}`;
+                    const displayName = userData.displayName || 'Piloto Desconhecido';
                     userCache[uid] = displayName;
                     setName(displayName);
                 } else {
-                    // Fallback if user not found (maybe just a steam ID not registered yet)
-                    setName('Piloto Desconhecido');
+                    // PRIORITY 3: Final fallback
+                    const fallbackName = 'Piloto Desconhecido';
+                    userCache[uid] = fallbackName;
+                    setName(fallbackName);
                 }
             } catch (error) {
                 console.error("Error fetching user name:", error);
-                setName('Piloto Desconhecido');
+                const fallbackName = 'Piloto Desconhecido';
+                userCache[uid] = fallbackName;
+                setName(fallbackName);
             } finally {
                 setLoading(false);
             }
