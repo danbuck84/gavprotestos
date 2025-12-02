@@ -6,7 +6,6 @@ import { signOut } from 'firebase/auth';
 import { useState } from 'react';
 
 import { useLocation } from 'react-router-dom';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 
 export default function Header() {
     const navigate = useNavigate();
@@ -38,15 +37,19 @@ export default function Header() {
             <Toolbar sx={{ justifyContent: 'space-between', px: { xs: 1, sm: 2 }, minHeight: { xs: 56, sm: 64 } }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', minWidth: 0, flex: '0 1 auto' }}>
                     {location.pathname !== '/' && (
-                        <IconButton
-                            edge="start"
-                            color="inherit"
-                            aria-label="back"
+                        <Typography
                             onClick={() => navigate(-1)}
-                            sx={{ mr: 1 }}
+                            sx={{
+                                fontSize: '1.5rem',
+                                fontWeight: 'bold',
+                                cursor: 'pointer',
+                                mr: 2,
+                                color: 'primary.main',
+                                userSelect: 'none'
+                            }}
                         >
-                            <ArrowBackIcon />
-                        </IconButton>
+                            &lt;
+                        </Typography>
                     )}
                     <Box
                         component="img"
@@ -57,7 +60,7 @@ export default function Header() {
                     />
                 </Box>
 
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0 }}>
                     {user && <NotificationBell />}
 
                     {user ? (
