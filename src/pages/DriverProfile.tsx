@@ -25,12 +25,15 @@ export default function DriverProfile() {
             if (!id) return;
             setLoading(true);
             try {
-                console.log('🔍 DriverProfile - Fetching protests for ID:', id);
+                // Clean ID - remove steam: prefix if present (protests are saved without it)
+                const cleanId = id.startsWith('steam:') ? id.replace('steam:', '') : id;
+
+                console.log('🔍 DriverProfile - Fetching protests for ID:', id, '→ Clean ID:', cleanId);
 
                 // Fetch Protests where user is accused (NO orderBy to avoid index requirement)
                 const qAccused = query(
                     collection(db, 'protests'),
-                    where('accusedId', '==', id)
+                    where('accusedId', '==', cleanId)
                 );
                 const accusedSnap = await getDocs(qAccused);
                 const accusedProtests = accusedSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Protest));
@@ -39,7 +42,7 @@ export default function DriverProfile() {
                 // Fetch Protests where user is accuser (NO orderBy to avoid index requirement)
                 const qAccuser = query(
                     collection(db, 'protests'),
-                    where('accuserId', '==', id)
+                    where('accuserId', '==', cleanId)
                 );
                 const accuserSnap = await getDocs(qAccuser);
                 const accuserProtests = accuserSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Protest));

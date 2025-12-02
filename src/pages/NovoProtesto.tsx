@@ -158,6 +158,12 @@ export default function NovoProtesto() {
                 });
             }
 
+            console.log('🚀 Saving protest with IDs:', {
+                accuserId: currentUserSteamId,
+                accusedId: accusedId,
+                raceId: selectedRaceId
+            });
+
             await addDoc(collection(db, 'protests'), {
                 raceId: selectedRaceId,
                 accuserId: currentUserSteamId,

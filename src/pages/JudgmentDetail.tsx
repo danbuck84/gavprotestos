@@ -208,9 +208,12 @@ export default function JudgmentDetail() {
         try {
             await updateDoc(doc(db, 'protests', protest.id), { status: newStatus });
 
-            // If forcing to voting, show the vote form for admins
-            if (newStatus === 'under_review' && isSuper) {
-                setShowVoteForm(true);
+            // If forcing to voting, update lifecycle phase and show vote form
+            if (newStatus === 'under_review') {
+                setLifecyclePhase('voting');
+                if (isSuper) {
+                    setShowVoteForm(true);
+                }
             }
 
             setSnackbar({ open: true, message: `Status alterado para ${translateStatus(newStatus)}`, severity: 'success' });
