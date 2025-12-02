@@ -294,53 +294,83 @@ export default function JudgmentDetail() {
 
                 {/* Super Admin Actions */}
                 {isSuper && (
-                    <Paper elevation={0} sx={{ p: 2, border: '1px dashed #f44336', bgcolor: 'rgba(244, 67, 54, 0.05)' }}>
-                        <Typography variant="subtitle2" color="error" fontWeight="bold" gutterBottom>
-                            SUPER ADMIN ZONE
+                    <Paper
+                        elevation={3}
+                        sx={{
+                            p: 3,
+                            border: '2px solid',
+                            borderColor: 'error.main',
+                            bgcolor: 'rgba(244, 67, 54, 0.03)',
+                            borderRadius: 2
+                        }}
+                    >
+                        <Typography variant="h6" color="error" fontWeight="bold" gutterBottom sx={{ textAlign: 'center', mb: 2 }}>
+                            🔥 SUPER ADMIN ZONE 🔥
                         </Typography>
-                        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                        <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', justifyContent: 'center' }}>
                             <Button
-                                variant="outlined"
-                                color="primary"
-                                size="small"
+                                variant="contained"
+                                size="medium"
                                 startIcon={<EditIcon />}
                                 onClick={() => setOpenEditDialog(true)}
+                                sx={{
+                                    bgcolor: '#2196f3',
+                                    '&:hover': { bgcolor: '#1976d2' },
+                                    fontWeight: 'bold'
+                                }}
                             >
                                 Editar
                             </Button>
                             <Button
-                                variant="outlined"
-                                color="warning"
-                                size="small"
+                                variant="contained"
+                                size="medium"
                                 startIcon={<GavelIcon />}
+                                onClick={() => handleForceStatus('under_review')}
+                                sx={{
+                                    bgcolor: '#ff9800',
+                                    '&:hover': { bgcolor: '#f57c00' },
+                                    fontWeight: 'bold'
+                                }}
+                            >
+                                Forçar Votação
+                            </Button>
+                            <Button
+                                variant="contained"
+                                size="medium"
                                 onClick={() => handleForceStatus('concluded')}
+                                sx={{
+                                    bgcolor: '#4caf50',
+                                    '&:hover': { bgcolor: '#388e3c' },
+                                    fontWeight: 'bold'
+                                }}
                             >
                                 Forçar Conclusão
                             </Button>
                             <Button
-                                variant="outlined"
-                                color="info"
-                                size="small"
+                                variant="contained"
+                                size="medium"
                                 onClick={() => handleForceStatus('pending')}
+                                sx={{
+                                    bgcolor: '#9c27b0',
+                                    '&:hover': { bgcolor: '#7b1fa2' },
+                                    fontWeight: 'bold'
+                                }}
                             >
-                                Forçar Pendente
-                            </Button>
-                            <Button
-                                variant="outlined"
-                                color="success"
-                                size="small"
-                                onClick={() => handleForceStatus('under_review')}
-                            >
-                                Reabrir Protesto
+                                Voltar a Pendente
                             </Button>
                             <Button
                                 variant="contained"
                                 color="error"
-                                size="small"
+                                size="medium"
                                 startIcon={<DeleteIcon />}
                                 onClick={handleDeleteProtest}
+                                sx={{
+                                    fontWeight: 'bold',
+                                    bgcolor: '#d32f2f',
+                                    '&:hover': { bgcolor: '#b71c1c' }
+                                }}
                             >
-                                EXCLUIR
+                                EXCLUIR PROTESTO
                             </Button>
                         </Box>
                     </Paper>

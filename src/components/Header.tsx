@@ -7,7 +7,6 @@ import { useState } from 'react';
 
 export default function Header() {
     const navigate = useNavigate();
-    const location = useLocation();
     const user = auth.currentUser;
     const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
