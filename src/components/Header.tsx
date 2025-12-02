@@ -5,8 +5,6 @@ import { auth } from '../firebase';
 import { signOut } from 'firebase/auth';
 import { useState } from 'react';
 
-import { useLocation } from 'react-router-dom';
-
 export default function Header() {
     const navigate = useNavigate();
     const location = useLocation();
@@ -35,30 +33,13 @@ export default function Header() {
     return (
         <AppBar position="fixed" color="transparent" elevation={0} sx={{ bgcolor: 'background.default', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
             <Toolbar sx={{ justifyContent: 'space-between', px: { xs: 1, sm: 2 }, minHeight: { xs: 56, sm: 64 } }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', minWidth: 0, flex: '0 1 auto' }}>
-                    {location.pathname !== '/' && (
-                        <Typography
-                            onClick={() => navigate(-1)}
-                            sx={{
-                                fontSize: '1.5rem',
-                                fontWeight: 'bold',
-                                cursor: 'pointer',
-                                mr: 2,
-                                color: 'primary.main',
-                                userSelect: 'none'
-                            }}
-                        >
-                            &lt;
-                        </Typography>
-                    )}
-                    <Box
-                        component="img"
-                        src="/gavprotestos-logo.png"
-                        alt="GAV Protestos"
-                        sx={{ height: 40, cursor: 'pointer' }}
-                        onClick={() => navigate('/')}
-                    />
-                </Box>
+                <Box
+                    component="img"
+                    src="/gavprotestos-logo.png"
+                    alt="GAV Protestos"
+                    sx={{ height: 40, cursor: 'pointer' }}
+                    onClick={() => navigate('/')}
+                />
 
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0 }}>
                     {user && <NotificationBell />}

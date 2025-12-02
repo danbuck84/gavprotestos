@@ -5,6 +5,7 @@ import DashboardIcon from '@mui/icons-material/Dashboard';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import PersonIcon from '@mui/icons-material/Person';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { auth, db } from '../firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
@@ -55,28 +56,43 @@ export default function BottomNav() {
                 value={value}
                 onChange={(_, newValue) => {
                     setValue(newValue);
-                    switch (newValue) {
-                        case 0: navigate('/'); break;
-                        case 1: navigate('/novo-protesto'); break;
-                        case 2:
-                            if (auth.currentUser) navigate(`/admin/piloto/${auth.currentUser.uid}`);
-                            else navigate('/login');
-                            break;
-                        case 3: navigate('/admin'); break;
+                    if (newValue === -1) {
+                        navigate(-1); // Back button
+                    } else if (newValue === 0) {
+                        navigate('/');
+                    } else if (newValue === 1) {
+                        navigate('/novo-protesto');
+                    } else if (newValue === 2) {
+                        if (auth.currentUser) navigate(`/admin/piloto/${auth.currentUser.uid}`);
+                        else navigate('/login');
+                    } else if (newValue === 3) {
+                        navigate('/admin');
                     }
                 }}
             >
-                <BottomNavigationAction label="Início" icon={<DashboardIcon />} />
+                {location.pathname !== '/' && (
+                    <BottomNavigationAction
+                        value={-1}
+                        label="VOLTAR"
+                        icon={<ArrowBackIcon sx={{ color: '#fff' }} />}
+                        sx={{
+                            minWidth: 60,
+                            '& .MuiBottomNavigationAction-label': { fontSize: '0.65rem' }
+                        }}
+                    />
+                )}
+                <BottomNavigationAction label="Início" icon={<DashboardIcon />} value={0} />
                 <BottomNavigationAction
                     label="Novo"
                     icon={<AddCircleOutlineIcon sx={{ fontSize: 40, color: theme.palette.primary.main }} />}
                     sx={{
                         '& .MuiBottomNavigationAction-label': { fontWeight: 'bold' }
                     }}
+                    value={1}
                 />
-                <BottomNavigationAction label="Perfil" icon={<PersonIcon />} />
+                <BottomNavigationAction label="Perfil" icon={<PersonIcon />} value={2} />
                 {userRole === 'admin' && (
-                    <BottomNavigationAction label="Admin" icon={<AdminPanelSettingsIcon />} />
+                    <BottomNavigationAction label="Admin" icon={<AdminPanelSettingsIcon />} value={3} />
                 )}
             </BottomNavigation>
         </Paper>
