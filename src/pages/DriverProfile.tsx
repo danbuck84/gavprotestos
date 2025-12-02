@@ -1,10 +1,11 @@
+```javascript
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
     Container, Typography, Box, Paper, Grid,
-    List, ListItem, ListItemText, Divider, Chip, CircularProgress, Avatar, Stack
+    List, ListItem, ListItemText, Divider, Chip, CircularProgress, Avatar, Button, ListItemButton
 } from '@mui/material';
-import { collection, query, where, getDocs, orderBy, doc, getDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
 import { db } from '../firebase';
 import type { Protest } from '../types';
 import UserName from '../components/UserName';
@@ -87,11 +88,11 @@ export default function DriverProfile() {
             {/* Header */}
             <Paper elevation={3} sx={{ p: 4, mb: 4, display: 'flex', alignItems: 'center', gap: 3 }}>
                 <Avatar sx={{ width: 80, height: 80, bgcolor: 'primary.main', fontSize: '2rem' }}>
-                    <UserName uid={id} variant="h4" onlyInitial />
+                    <UserName uid={id} variant="h6" onlyInitial />
                 </Avatar>
                 <Box>
                     <Typography variant="h4">
-                        <UserName uid={id} variant="h4" />
+                        <UserName uid={id} variant="h6" />
                     </Typography>
                     <Typography variant="subtitle1" color="text.secondary">ID: {id}</Typography>
                 </Box>
@@ -99,13 +100,13 @@ export default function DriverProfile() {
 
             {/* Stats Cards */}
             <Grid container spacing={3} sx={{ mb: 4 }}>
-                <Grid item xs={12} sm={6} md={4}>
+                <Grid xs={12} sm={6} md={4}>
                     <Paper sx={{ p: 2, textAlign: 'center' }}>
                         <Typography variant="h3" color="primary">{stats.protestsInvolved}</Typography>
                         <Typography variant="body2" color="text.secondary">Protestos Envolvido</Typography>
                     </Paper>
                 </Grid>
-                <Grid item xs={12} sm={6} md={4}>
+                <Grid xs={12} sm={6} md={4}>
                     <Paper sx={{ p: 2, textAlign: 'center' }}>
                         <Typography variant="h3" color="error">{stats.penalties}</Typography>
                         <Typography variant="body2" color="text.secondary">Punições Recebidas</Typography>
@@ -122,34 +123,32 @@ export default function DriverProfile() {
                     <List>
                         {history.map((protest, index) => (
                             <Box key={protest.id}>
-                                <ListItem
-                                    alignItems="flex-start"
-                                    button
-                                    onClick={() => navigate(`/admin/julgamento/${protest.id}`)} // Or public view if exists
-                                >
-                                    <ListItemText
-                                        primary={
-                                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <Typography variant="subtitle1" fontWeight="bold">
-                                                    {protest.accuserId === id ? 'Autor' : 'Acusado'} em {protest.raceId}
-                                                </Typography>
-                                                <Chip
-                                                    label={protest.status === 'concluded' ? protest.verdict : protest.status}
-                                                    color={protest.status === 'concluded' && protest.verdict === 'Punido' ? 'error' : 'default'}
-                                                    size="small"
-                                                />
-                                            </Box>
-                                        }
-                                        secondary={
-                                            <>
-                                                <Typography component="span" variant="body2" color="text.primary">
-                                                    Contra: <UserName uid={protest.accuserId === id ? protest.accusedId : protest.accuserId} />
-                                                </Typography>
-                                                <br />
-                                                {new Date(protest.createdAt).toLocaleDateString()} - {protest.description.substring(0, 100)}...
-                                            </>
-                                        }
-                                    />
+                                <ListItem disablePadding>
+                                    <ListItemButton onClick={() => navigate(`/ admin / julgamento / ${ protest.id } `)}>
+                                        <ListItemText
+                                            primary={
+                                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                    <Typography variant="subtitle1" fontWeight="bold">
+                                                        {protest.accuserId === id ? 'Autor' : 'Acusado'} em {protest.raceId}
+                                                    </Typography>
+                                                    <Chip
+                                                        label={protest.status === 'concluded' ? protest.verdict : protest.status}
+                                                        color={protest.status === 'concluded' && protest.verdict === 'Punido' ? 'error' : 'default'}
+                                                        size="small"
+                                                    />
+                                                </Box>
+                                            }
+                                            secondary={
+                                                <>
+                                                    <Typography component="span" variant="body2" color="text.primary">
+                                                        Contra: <UserName uid={protest.accuserId === id ? protest.accusedId : protest.accuserId} />
+                                                    </Typography>
+                                                    <br />
+                                                    {new Date(protest.createdAt).toLocaleDateString()} - {protest.description.substring(0, 100)}...
+                                                </>
+                                            }
+                                        />
+                                    </ListItemButton>
                                 </ListItem>
                                 {index < history.length - 1 && <Divider />}
                             </Box>
