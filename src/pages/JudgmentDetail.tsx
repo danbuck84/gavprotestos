@@ -332,10 +332,10 @@ export default function JudgmentDetail() {
 
                 {/* Header Section */}
                 <Paper elevation={0} sx={{ p: 2, bgcolor: 'background.paper', borderRadius: 2 }}>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                        <Box>
+                    <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'flex-start' }, gap: 1 }}>
+                        <Box sx={{ flex: 1, minWidth: 0 }}>
                             <Typography variant="overline" color="text.secondary">Protesto</Typography>
-                            <Typography variant="h6" fontWeight="bold">
+                            <Typography variant="h6" fontWeight="bold" sx={{ wordBreak: 'break-word' }}>
                                 <UserName uid={protest.accuserId} variant="h6" fontWeight="bold" />
                                 <Typography component="span" color="text.secondary" sx={{ mx: 1 }}>vs</Typography>
                                 <UserName uid={protest.accusedId} variant="h6" fontWeight="bold" />
@@ -344,11 +344,13 @@ export default function JudgmentDetail() {
                                 {race?.trackName} - {protest.heat}
                             </Typography>
                         </Box>
-                        <Chip
-                            label={protest.status === 'concluded' ? protest.verdict : protest.status.replace('_', ' ').toUpperCase()}
-                            color={protest.status === 'concluded' ? (protest.verdict === 'Punido' ? 'error' : 'success') : 'warning'}
-                            size="small"
-                        />
+                        <Box sx={{ flexShrink: 0 }}>
+                            <Chip
+                                label={protest.status === 'concluded' ? protest.verdict : protest.status.replace('_', ' ').toUpperCase()}
+                                color={protest.status === 'concluded' ? (protest.verdict === 'Punido' ? 'error' : 'success') : 'warning'}
+                                size="small"
+                            />
+                        </Box>
                     </Box>
                     <Box sx={{ mt: 2, p: 1.5, bgcolor: 'rgba(255,255,255,0.05)', borderRadius: 1 }}>
                         <Typography variant="body2" fontWeight="bold">Incidente:</Typography>
@@ -490,7 +492,7 @@ export default function JudgmentDetail() {
                             </FormControl>
 
                             <TextField
-                                label="Justificativa (Obrigatório)"
+                                label="Justificativa (Opcional)"
                                 multiline
                                 rows={2}
                                 fullWidth
@@ -505,7 +507,7 @@ export default function JudgmentDetail() {
                                 fullWidth
                                 size="large"
                                 onClick={handleSubmitVote}
-                                disabled={voting || !reason.trim()}
+                                disabled={voting}
                                 sx={{
                                     bgcolor: verdict === 'punish' ? 'error.main' : 'success.main',
                                     '&:hover': {

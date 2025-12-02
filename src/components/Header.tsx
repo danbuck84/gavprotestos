@@ -34,9 +34,9 @@ export default function Header() {
     };
 
     return (
-        <AppBar position="static" color="transparent" elevation={0}>
-            <Toolbar sx={{ justifyContent: 'space-between' }}>
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+        <AppBar position="fixed" color="transparent" elevation={0} sx={{ bgcolor: 'background.default', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+            <Toolbar sx={{ justifyContent: 'space-between', px: { xs: 1, sm: 2 }, minHeight: { xs: 56, sm: 64 } }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', minWidth: 0, flex: '0 1 auto' }}>
                     {location.pathname !== '/' && (
                         <IconButton
                             edge="start"
