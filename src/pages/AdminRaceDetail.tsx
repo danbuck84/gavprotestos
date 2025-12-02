@@ -37,10 +37,12 @@ export default function AdminRaceDetail() {
                     ...doc.data()
                 })) as Protest[];
 
-                // Sort by creation date
-                protestsData.sort((a, b) =>
-                    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-                );
+                // Sort by creation date with safety checks
+                protestsData.sort((a, b) => {
+                    const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+                    const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+                    return dateB - dateA;
+                });
 
                 setProtests(protestsData);
             } catch (error) {
@@ -84,13 +86,13 @@ export default function AdminRaceDetail() {
                 <Typography variant="overline" color="text.secondary">Corrida</Typography>
                 <Typography variant="h4" gutterBottom fontWeight="bold">{race.trackName}</Typography>
                 <Typography variant="body1" color="text.secondary" gutterBottom>
-                    {new Date(race.date).toLocaleDateString('pt-BR', {
+                    {race.date ? new Date(race.date).toLocaleDateString('pt-BR', {
                         day: '2-digit',
                         month: 'long',
                         year: 'numeric',
                         hour: '2-digit',
                         minute: '2-digit'
-                    })}
+                    }) : 'Data não disponível'}
                 </Typography>
                 {/* Heats feature commented out - Race type doesn't include heats property */}
                 {/* {race.heats?.map((heat: string, index: number) => (
@@ -141,8 +143,8 @@ export default function AdminRaceDetail() {
                 </Paper>
             ) : (
                 <Stack spacing={2}>
-                    {filteredProtests.map(protest => (
-                        <ProtestCard key={protest.id} protest={protest} />
+                    {filteredProtests?.map(protest => (
+                        <ProtestCard key={protest?.id || Math.random()} protest={protest} />
                     ))}
                 </Stack>
             )}
