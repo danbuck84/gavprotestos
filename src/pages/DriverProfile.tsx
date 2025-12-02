@@ -1,4 +1,3 @@
-```javascript
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
@@ -100,13 +99,13 @@ export default function DriverProfile() {
 
             {/* Stats Cards */}
             <Grid container spacing={3} sx={{ mb: 4 }}>
-                <Grid xs={12} sm={6} md={4}>
+                <Grid item xs={12} sm={6} md={4}>
                     <Paper sx={{ p: 2, textAlign: 'center' }}>
                         <Typography variant="h3" color="primary">{stats.protestsInvolved}</Typography>
                         <Typography variant="body2" color="text.secondary">Protestos Envolvido</Typography>
                     </Paper>
                 </Grid>
-                <Grid xs={12} sm={6} md={4}>
+                <Grid item xs={12} sm={6} md={4}>
                     <Paper sx={{ p: 2, textAlign: 'center' }}>
                         <Typography variant="h3" color="error">{stats.penalties}</Typography>
                         <Typography variant="body2" color="text.secondary">Punições Recebidas</Typography>
@@ -124,7 +123,7 @@ export default function DriverProfile() {
                         {history.map((protest, index) => (
                             <Box key={protest.id}>
                                 <ListItem disablePadding>
-                                    <ListItemButton onClick={() => navigate(`/ admin / julgamento / ${ protest.id } `)}>
+                                    <ListItemButton onClick={() => navigate(`/admin/julgamento/${protest.id}`)}>
                                         <ListItemText
                                             primary={
                                                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
