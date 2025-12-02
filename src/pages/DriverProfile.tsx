@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
-    Container, Typography, Box, Paper, Grid,
+    Container, Typography, Box, Paper,
     List, ListItem, ListItemText, Divider, Chip, CircularProgress, Avatar, Button, ListItemButton
 } from '@mui/material';
 import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
@@ -87,7 +87,7 @@ export default function DriverProfile() {
             {/* Header */}
             <Paper elevation={3} sx={{ p: 4, mb: 4, display: 'flex', alignItems: 'center', gap: 3 }}>
                 <Avatar sx={{ width: 80, height: 80, bgcolor: 'primary.main', fontSize: '2rem' }}>
-                    <UserName uid={id} variant="h6" onlyInitial />
+                    <UserName uid={id} variant="h6" />
                 </Avatar>
                 <Box>
                     <Typography variant="h4">
@@ -98,20 +98,20 @@ export default function DriverProfile() {
             </Paper>
 
             {/* Stats Cards */}
-            <Grid container spacing={3} sx={{ mb: 4 }}>
-                <Grid item xs={12} sm={6} md={4}>
+            <Box sx={{ display: 'flex', gap: 3, mb: 4, flexWrap: 'wrap' }}>
+                <Box sx={{ flex: 1, minWidth: '200px' }}>
                     <Paper sx={{ p: 2, textAlign: 'center' }}>
                         <Typography variant="h3" color="primary">{stats.protestsInvolved}</Typography>
                         <Typography variant="body2" color="text.secondary">Protestos Envolvido</Typography>
                     </Paper>
-                </Grid>
-                <Grid item xs={12} sm={6} md={4}>
+                </Box>
+                <Box sx={{ flex: 1, minWidth: '200px' }}>
                     <Paper sx={{ p: 2, textAlign: 'center' }}>
                         <Typography variant="h3" color="error">{stats.penalties}</Typography>
                         <Typography variant="body2" color="text.secondary">Punições Recebidas</Typography>
                     </Paper>
-                </Grid>
-            </Grid>
+                </Box>
+            </Box>
 
             {/* History */}
             <Typography variant="h5" gutterBottom>Histórico de Protestos</Typography>
