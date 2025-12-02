@@ -17,6 +17,19 @@ import type { Protest, Vote, ProtestStatus, Race } from '../types';
 import { isSuperAdmin } from '../utils/permissions';
 import UserName from '../components/UserName';
 
+// Translate status to Portuguese
+const translateStatus = (status: string): string => {
+    const translations: Record<string, string> = {
+        'pending': 'Pendente',
+        'under_review': 'Em Votação',
+        'concluded': 'Concluído',
+        'inconclusive': 'Inconclusivo',
+        'accepted': 'Aceito',
+        'rejected': 'Rejeitado'
+    };
+    return translations[status] || status;
+};
+
 export default function JudgmentDetail() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
@@ -194,7 +207,13 @@ export default function JudgmentDetail() {
         if (!protest) return;
         try {
             await updateDoc(doc(db, 'protests', protest.id), { status: newStatus });
-            setSnackbar({ open: true, message: `Status alterado para ${newStatus}`, severity: 'success' });
+
+            // If forcing to voting, show the vote form for admins
+            if (newStatus === 'under_review' && isSuper) {
+                setShowVoteForm(true);
+            }
+
+            setSnackbar({ open: true, message: `Status alterado para ${translateStatus(newStatus)}`, severity: 'success' });
         } catch (error) {
             console.error("Error forcing status:", error);
             setSnackbar({ open: true, message: 'Erro ao alterar status.', severity: 'error' });
@@ -392,7 +411,7 @@ export default function JudgmentDetail() {
                         </Box>
                         <Box sx={{ flexShrink: 0 }}>
                             <Chip
-                                label={protest.status === 'concluded' ? protest.verdict : protest.status.replace('_', ' ').toUpperCase()}
+                                label={protest.status === 'concluded' ? protest.verdict : translateStatus(protest.status)}
                                 color={protest.status === 'concluded' ? (protest.verdict === 'Punido' ? 'error' : 'success') : 'warning'}
                                 size="small"
                             />

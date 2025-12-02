@@ -62,6 +62,13 @@ export default function DriverProfile() {
                     p.status === 'accepted' || (p.status === 'concluded' && p.verdict === 'Punido')
                 ).length;
 
+                console.log('\ud83d\udcca Stats calculation:', {
+                    protestsInvolved: uniqueProtests.length,
+                    penalties: penaltiesCount,
+                    accusedProtestsCount: accusedProtests.length,
+                    accuserProtestsCount: accuserProtests.length
+                });
+
                 setStats({
                     protestsInvolved: uniqueProtests.length,
                     penalties: penaltiesCount,
