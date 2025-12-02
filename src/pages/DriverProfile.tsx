@@ -25,6 +25,8 @@ export default function DriverProfile() {
             if (!id) return;
             setLoading(true);
             try {
+                console.log('🔍 DriverProfile - Fetching protests for ID:', id);
+
                 // Fetch Protests where user is accused (NO orderBy to avoid index requirement)
                 const qAccused = query(
                     collection(db, 'protests'),
@@ -32,6 +34,7 @@ export default function DriverProfile() {
                 );
                 const accusedSnap = await getDocs(qAccused);
                 const accusedProtests = accusedSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Protest));
+                console.log('📥 Found protests where user is ACCUSED:', accusedProtests.length, accusedProtests);
 
                 // Fetch Protests where user is accuser (NO orderBy to avoid index requirement)
                 const qAccuser = query(
@@ -40,14 +43,17 @@ export default function DriverProfile() {
                 );
                 const accuserSnap = await getDocs(qAccuser);
                 const accuserProtests = accuserSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Protest));
+                console.log('📥 Found protests where user is ACCUSER:', accuserProtests.length, accuserProtests);
 
                 // Combine and sort client-side (no index needed!)
                 const allProtests = [...accusedProtests, ...accuserProtests].sort((a, b) =>
                     new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
                 );
+                console.log('📊 Total combined protests:', allProtests.length);
 
                 // Remove duplicates if any (shouldn't be, but good practice)
                 const uniqueProtests = Array.from(new Map(allProtests.map(item => [item.id, item])).values());
+                console.log('✅ Unique protests after deduplication:', uniqueProtests.length);
 
                 setHistory(uniqueProtests);
 
@@ -63,7 +69,7 @@ export default function DriverProfile() {
                 });
 
             } catch (error) {
-                console.error("Error fetching driver data:", error);
+                console.error("❌ Error fetching driver data:", error);
             } finally {
                 setLoading(false);
             }
