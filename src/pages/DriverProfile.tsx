@@ -2,9 +2,10 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
     Container, Typography, Box, Paper,
-    List, ListItem, ListItemText, Divider, Chip, CircularProgress, Avatar, Button, ListItemButton
+    List, ListItem, ListItemText, Divider, Chip, CircularProgress, Avatar, IconButton, ListItemButton
 } from '@mui/material';
-import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 import type { Protest } from '../types';
 import UserName from '../components/UserName';
@@ -25,25 +26,23 @@ export default function DriverProfile() {
             if (!id) return;
             setLoading(true);
             try {
-                // Fetch Protests where user is accused
+                // Fetch Protests where user is accused (NO orderBy to avoid index requirement)
                 const qAccused = query(
                     collection(db, 'protests'),
-                    where('accusedId', '==', id),
-                    orderBy('createdAt', 'desc')
+                    where('accusedId', '==', id)
                 );
                 const accusedSnap = await getDocs(qAccused);
                 const accusedProtests = accusedSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Protest));
 
-                // Fetch Protests where user is accuser (optional, for history)
+                // Fetch Protests where user is accuser (NO orderBy to avoid index requirement)
                 const qAccuser = query(
                     collection(db, 'protests'),
-                    where('accuserId', '==', id),
-                    orderBy('createdAt', 'desc')
+                    where('accuserId', '==', id)
                 );
                 const accuserSnap = await getDocs(qAccuser);
                 const accuserProtests = accuserSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Protest));
 
-                // Combine and sort
+                // Combine and sort client-side (no index needed!)
                 const allProtests = [...accusedProtests, ...accuserProtests].sort((a, b) =>
                     new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
                 );
@@ -82,12 +81,16 @@ export default function DriverProfile() {
 
     return (
         <Container maxWidth="md" sx={{ mt: 4, mb: 8 }}>
-            <Button onClick={() => navigate(-1)} sx={{ mb: 2 }}>&lt; Voltar</Button>
+            <IconButton onClick={() => navigate(-1)} sx={{ mb: 2 }} aria-label="voltar">
+                <ArrowBackIcon />
+            </IconButton>
 
             {/* Header */}
             <Paper elevation={3} sx={{ p: 4, mb: 4, display: 'flex', alignItems: 'center', gap: 3 }}>
-                <Avatar sx={{ width: 80, height: 80, bgcolor: 'primary.main', fontSize: '2rem' }}>
-                    <UserName uid={id} variant="h6" />
+                <Avatar sx={{ width: 80, height: 80, bgcolor: 'primary.main', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Typography variant="h4" sx={{ fontWeight: 'bold' }}>
+                        <UserName uid={id} variant="h6" />
+                    </Typography>
                 </Avatar>
                 <Box>
                     <Typography variant="h4">

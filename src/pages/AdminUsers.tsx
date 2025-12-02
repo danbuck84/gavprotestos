@@ -85,11 +85,11 @@ export default function AdminUsers() {
             </Button>
             <Typography variant="h4" gutterBottom>Gestão de Usuários</Typography>
 
-            <TableContainer component={Paper}>
-                <Table>
+            <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
+                <Table sx={{ minWidth: { xs: '100%', sm: 650 } }}>
                     <TableHead>
                         <TableRow>
-                            <TableCell>Nome</TableCell>
+                            <TableCell>ID</TableCell>
                             <TableCell>Steam ID</TableCell>
                             <TableCell>Função</TableCell>
                             <TableCell align="right">Ações</TableCell>
@@ -98,12 +98,17 @@ export default function AdminUsers() {
                     <TableBody>
                         {users.map((user) => (
                             <TableRow key={user.uid}>
-                                <TableCell>{user.displayName || 'Sem Nome'}</TableCell>
-                                <TableCell>{user.uid}</TableCell>
+                                <TableCell sx={{ wordBreak: 'break-word', maxWidth: { xs: '120px', sm: 'none' } }}>
+                                    {user.displayName || user.uid.substring(0, 15) + '...'}
+                                </TableCell>
+                                <TableCell sx={{ wordBreak: 'break-all', maxWidth: { xs: '150px', sm: 'none' }, fontSize: { xs: '0.75rem', sm: '1rem' } }}>
+                                    {user.uid}
+                                </TableCell>
                                 <TableCell>
                                     <Chip
                                         label={isSuperAdmin(user.uid) ? 'SUPER ADMIN' : (user.role === 'admin' ? 'ADMIN' : 'PILOTO')}
                                         color={isSuperAdmin(user.uid) ? 'secondary' : (user.role === 'admin' ? 'primary' : 'default')}
+                                        size="small"
                                     />
                                 </TableCell>
                                 <TableCell align="right">
@@ -114,8 +119,9 @@ export default function AdminUsers() {
                                             size="small"
                                             onClick={() => handleToggleAdmin(user)}
                                             disabled={user.role === 'admin' && !isSuperAdmin(currentUserUid)}
+                                            sx={{ fontSize: { xs: '0.7rem', sm: '0.875rem' }, px: { xs: 1, sm: 2 } }}
                                         >
-                                            {user.role === 'admin' ? 'Remover Admin' : 'Tornar Admin'}
+                                            {user.role === 'admin' ? 'Remover' : 'Admin'}
                                         </Button>
                                     )}
                                 </TableCell>

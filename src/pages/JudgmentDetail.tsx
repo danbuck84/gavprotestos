@@ -238,7 +238,15 @@ export default function JudgmentDetail() {
             }
 
             await deleteDoc(doc(db, 'protests', protest.id));
-            navigate('/admin');
+
+            // Set loading to true to prevent listeners from erroring
+            setLoading(true);
+            setSnackbar({ open: true, message: 'Protesto excluído com sucesso!', severity: 'success' });
+
+            // Navigate after a brief delay to allow snackbar to show
+            setTimeout(() => {
+                navigate('/admin');
+            }, 500);
         } catch (error) {
             console.error("Error deleting protest:", error);
             setSnackbar({ open: true, message: 'Erro ao excluir protesto.', severity: 'error' });
@@ -316,6 +324,14 @@ export default function JudgmentDetail() {
                                 onClick={() => handleForceStatus('pending')}
                             >
                                 Forçar Pendente
+                            </Button>
+                            <Button
+                                variant="outlined"
+                                color="success"
+                                size="small"
+                                onClick={() => handleForceStatus('under_review')}
+                            >
+                                Reabrir Protesto
                             </Button>
                             <Button
                                 variant="contained"
