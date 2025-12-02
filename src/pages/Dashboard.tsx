@@ -9,6 +9,8 @@ import type { Protest } from '../types';
 import NotificationBell from '../components/NotificationBell';
 import ProtestCard from '../components/ProtestCard';
 import UserName from '../components/UserName';
+import { translateStatus } from '../utils/translations';
+import { formatDateOnly } from '../utils/dateUtils';
 
 export default function Dashboard() {
     const navigate = useNavigate();
@@ -160,7 +162,7 @@ export default function Dashboard() {
                 </Typography>
             ) : isMobile ? (
                 <Box>
-                    {protests.map((protest) => (
+                    {protests?.map((protest) => (
                         <ProtestCard key={protest.id} protest={protest} />
                     ))}
                 </Box>
@@ -176,24 +178,24 @@ export default function Dashboard() {
                             </TableRow>
                         </TableHead>
                         <TableBody>
-                            {protests.map((protest) => (
+                            {protests?.map((protest) => (
                                 <TableRow key={protest.id}>
-                                    <TableCell>{protest.createdAt && new Date(protest.createdAt).toLocaleDateString()}</TableCell>
+                                    <TableCell>{formatDateOnly(protest.createdAt)}</TableCell>
                                     <TableCell>
                                         <UserName uid={protest.accusedId} />
                                     </TableCell>
                                     <TableCell>
                                         <Chip
-                                            label={protest.status === 'pending' ? 'Pendente' : protest.status === 'under_review' ? 'Em Análise' : 'Concluído'}
-                                            color={protest.status === 'pending' ? 'warning' : protest.status === 'under_review' ? 'info' : 'success'}
+                                            label={translateStatus(protest?.status || '')}
+                                            color={protest?.status === 'pending' ? 'warning' : protest?.status === 'under_review' ? 'info' : 'success'}
                                             size="small"
                                         />
                                     </TableCell>
                                     <TableCell>
-                                        {protest.status === 'concluded' ? (
+                                        {protest?.status === 'concluded' ? (
                                             <Chip
-                                                label={protest.verdict === 'punished' ? 'Punido' : protest.verdict === 'absolved' ? 'Absolvido' : 'Inconclusivo'}
-                                                color={protest.verdict === 'punished' ? 'error' : protest.verdict === 'absolved' ? 'success' : 'default'}
+                                                label={protest?.verdict === 'punished' ? 'Punido' : protest?.verdict === 'absolved' ? 'Absolvido' : 'Inconclusivo'}
+                                                color={protest?.verdict === 'punished' ? 'error' : protest?.verdict === 'absolved' ? 'success' : 'default'}
                                                 size="small"
                                                 variant="outlined"
                                             />
