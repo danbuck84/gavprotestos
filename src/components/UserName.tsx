@@ -40,11 +40,11 @@ export default function UserName({ uid, variant = 'body1', fontWeight, color }: 
                     setName(displayName);
                 } else {
                     // Fallback if user not found (maybe just a steam ID not registered yet)
-                    setName(uid);
+                    setName('Piloto Desconhecido');
                 }
             } catch (error) {
                 console.error("Error fetching user name:", error);
-                setName(uid);
+                setName('Piloto Desconhecido');
             } finally {
                 setLoading(false);
             }

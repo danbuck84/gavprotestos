@@ -16,19 +16,7 @@ import { db, auth, storage } from '../firebase';
 import type { Protest, Vote, ProtestStatus, Race } from '../types';
 import { isSuperAdmin } from '../utils/permissions';
 import UserName from '../components/UserName';
-
-// Translate status to Portuguese
-const translateStatus = (status: string): string => {
-    const translations: Record<string, string> = {
-        'pending': 'Pendente',
-        'under_review': 'Em Votação',
-        'concluded': 'Concluído',
-        'inconclusive': 'Inconclusivo',
-        'accepted': 'Aceito',
-        'rejected': 'Rejeitado'
-    };
-    return translations[status] || status;
-};
+import { translateStatus } from '../utils/translations';
 
 export default function JudgmentDetail() {
     const { id } = useParams<{ id: string }>();
@@ -300,7 +288,7 @@ export default function JudgmentDetail() {
     if (!protest) return null;
 
     return (
-        <Container maxWidth="md" sx={{ mt: 2, mb: 12 }}>
+        <Container maxWidth="md" sx={{ mt: 2, mb: 4 }}>
             <Stack spacing={3}>
                 {/* Timer Section */}
                 {timeRemaining && (
@@ -510,85 +498,82 @@ export default function JudgmentDetail() {
                         )}
                     </Paper>
                 )}
-            </Stack>
 
-            {/* Sticky Footer for Voting */}
-            {lifecyclePhase === 'voting' && !hasVoted && (
-                <Paper
-                    sx={{
-                        position: 'fixed',
-                        bottom: 0,
-                        left: 0,
-                        right: 0,
-                        p: 2,
-                        zIndex: 1100,
-                        borderTop: '1px solid rgba(255,255,255,0.1)',
-                        bgcolor: 'background.paper'
-                    }}
-                    elevation={10}
-                >
-                    {!showVoteForm ? (
-                        <Button
-                            variant="contained"
-                            color="primary"
-                            fullWidth
-                            size="large"
-                            onClick={() => setShowVoteForm(true)}
-                        >
-                            VOTAR AGORA
-                        </Button>
-                    ) : (
-                        <Box>
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                                <Typography variant="h6">Registrar Voto</Typography>
-                                <Button size="small" onClick={() => setShowVoteForm(false)}>Cancelar</Button>
-                            </Box>
-
-                            <FormControl component="fieldset" fullWidth sx={{ mb: 2 }}>
-                                <RadioGroup row value={verdict} onChange={(e) => setVerdict(e.target.value as any)} sx={{ justifyContent: 'space-around' }}>
-                                    <FormControlLabel
-                                        value="punish"
-                                        control={<Radio color="error" />}
-                                        label={<Typography color="error" fontWeight="bold">PUNIR</Typography>}
-                                    />
-                                    <FormControlLabel
-                                        value="acquit"
-                                        control={<Radio color="success" />}
-                                        label={<Typography color="success" fontWeight="bold">ABSOLVER</Typography>}
-                                    />
-                                </RadioGroup>
-                            </FormControl>
-
-                            <TextField
-                                label="Justificativa (Opcional)"
-                                multiline
-                                rows={2}
-                                fullWidth
-                                value={reason}
-                                onChange={(e) => setReason(e.target.value)}
-                                sx={{ mb: 2 }}
-                                variant="filled"
-                            />
-
+                {/* Voting Panel - Now in document flow */}
+                {lifecyclePhase === 'voting' && !hasVoted && (
+                    <Paper
+                        sx={{
+                            p: 3,
+                            mt: 3,
+                            border: '2px solid',
+                            borderColor: 'primary.main',
+                            bgcolor: 'rgba(25, 118, 210, 0.05)'
+                        }}
+                        elevation={3}
+                    >
+                        {!showVoteForm ? (
                             <Button
                                 variant="contained"
+                                color="primary"
                                 fullWidth
                                 size="large"
-                                onClick={handleSubmitVote}
-                                disabled={voting}
-                                sx={{
-                                    bgcolor: verdict === 'punish' ? 'error.main' : 'success.main',
-                                    '&:hover': {
-                                        bgcolor: verdict === 'punish' ? 'error.dark' : 'success.dark',
-                                    }
-                                }}
+                                onClick={() => setShowVoteForm(true)}
                             >
-                                CONFIRMAR {verdict === 'punish' ? 'PUNIÇÃO' : 'ABSOLVIÇÃO'}
+                                VOTAR AGORA
                             </Button>
-                        </Box>
-                    )}
-                </Paper>
-            )}
+                        ) : (
+                            <Box>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                                    <Typography variant="h6">Registrar Voto</Typography>
+                                    <Button size="small" onClick={() => setShowVoteForm(false)}>Cancelar</Button>
+                                </Box>
+
+                                <FormControl component="fieldset" fullWidth sx={{ mb: 2 }}>
+                                    <RadioGroup row value={verdict} onChange={(e) => setVerdict(e.target.value as any)} sx={{ justifyContent: 'space-around' }}>
+                                        <FormControlLabel
+                                            value="punish"
+                                            control={<Radio color="error" />}
+                                            label={<Typography color="error" fontWeight="bold">PUNIR</Typography>}
+                                        />
+                                        <FormControlLabel
+                                            value="acquit"
+                                            control={<Radio color="success" />}
+                                            label={<Typography color="success" fontWeight="bold">ABSOLVER</Typography>}
+                                        />
+                                    </RadioGroup>
+                                </FormControl>
+
+                                <TextField
+                                    label="Justificativa (Opcional)"
+                                    multiline
+                                    rows={2}
+                                    fullWidth
+                                    value={reason}
+                                    onChange={(e) => setReason(e.target.value)}
+                                    sx={{ mb: 2 }}
+                                    variant="filled"
+                                />
+
+                                <Button
+                                    variant="contained"
+                                    fullWidth
+                                    size="large"
+                                    onClick={handleSubmitVote}
+                                    disabled={voting}
+                                    sx={{
+                                        bgcolor: verdict === 'punish' ? 'error.main' : 'success.main',
+                                        '&:hover': {
+                                            bgcolor: verdict === 'punish' ? 'error.dark' : 'success.dark',
+                                        }
+                                    }}
+                                >
+                                    CONFIRMAR {verdict === 'punish' ? 'PUNIÇÃO' : 'ABSOLVIÇÃO'}
+                                </Button>
+                            </Box>
+                        )}
+                    </Paper>
+                )}
+            </Stack>
 
             {/* Edit Dialog */}
             <Dialog open={openEditDialog} onClose={() => setOpenEditDialog(false)} fullWidth maxWidth="sm">

@@ -1,6 +1,7 @@
 import { Card, CardContent, CardActions, Typography, Button, Chip, Box, Divider } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import type { Protest } from '../types';
+import { translateStatus } from '../utils/translations';
 
 import UserName from './UserName';
 
@@ -22,16 +23,6 @@ export default function ProtestCard({ protest, isAdminView = false }: ProtestCar
         }
     };
 
-    const getStatusLabel = (status: string) => {
-        switch (status) {
-            case 'pending': return 'Pendente';
-            case 'under_review': return 'Em Análise';
-            case 'concluded': return 'Julgado';
-            case 'inconclusive': return 'Inconclusivo';
-            default: return status;
-        }
-    };
-
     return (
         <Card sx={{ mb: 2, width: '100%' }}>
             <CardContent sx={{ pb: 1 }}>
@@ -41,7 +32,7 @@ export default function ProtestCard({ protest, isAdminView = false }: ProtestCar
                         <UserName uid={protest.accusedId} variant="h6" fontWeight="bold" />
                     </Typography>
                     <Chip
-                        label={getStatusLabel(protest.status)}
+                        label={translateStatus(protest.status)}
                         color={getStatusColor(protest.status) as any}
                         size="small"
                         variant="outlined"

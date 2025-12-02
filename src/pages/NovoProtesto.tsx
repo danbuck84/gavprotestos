@@ -8,6 +8,7 @@ import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { db, auth, storage } from '../firebase';
 import type { Race, RaceDriver } from '../types';
 import { useNavigate } from 'react-router-dom';
+import { formatDateOnly } from '../utils/dateUtils';
 
 export default function NovoProtesto() {
     const navigate = useNavigate();
@@ -223,7 +224,7 @@ export default function NovoProtesto() {
                     >
                         {races.map((race) => (
                             <MenuItem key={race.id} value={race.id}>
-                                {race.trackName} - {new Date(race.date).toLocaleDateString()}
+                                {race.trackName} - {formatDateOnly(race.date)}
                             </MenuItem>
                         ))}
                     </Select>
