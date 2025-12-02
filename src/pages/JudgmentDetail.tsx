@@ -102,7 +102,9 @@ export default function JudgmentDetail() {
         if (!race || !protest) return;
 
         const checkLifecycle = async () => {
-            const raceDate = new Date(race.date).getTime();
+            const raceDate = race.date ? new Date(race.date).getTime() : 0;
+            if (!raceDate) return;
+
             const now = Date.now();
             const hoursSinceRace = (now - raceDate) / (1000 * 60 * 60);
 
@@ -136,8 +138,8 @@ export default function JudgmentDetail() {
     const calculateAndSaveVerdict = async () => {
         if (!protest || !votes) return;
 
-        const punishVotes = votes.filter(v => v.verdict === 'punish').length;
-        const acquitVotes = votes.filter(v => v.verdict === 'acquit').length;
+        const punishVotes = votes?.filter(v => v?.verdict === 'punish').length || 0;
+        const acquitVotes = votes?.filter(v => v?.verdict === 'acquit').length || 0;
 
         let finalStatus: ProtestStatus = 'concluded';
         let finalVerdict = '';
@@ -485,12 +487,13 @@ export default function JudgmentDetail() {
                         ) : (
                             <Box sx={{ display: 'flex', gap: 2, mt: 1 }}>
                                 <Chip
-                                    label={`${votes.filter(v => v.verdict === 'punish').length} Voto(s) para PUNIR`}
+                                    label={`${votes?.filter(v => v?.verdict === 'punish').length || 0} Voto(s) para PUNIR`}
                                     color="error"
                                     variant="outlined"
+                                    size="small"
                                 />
                                 <Chip
-                                    label={`${votes.filter(v => v.verdict === 'acquit').length} Voto(s) para ABSOLVER`}
+                                    label={`${votes?.filter(v => v?.verdict === 'acquit').length || 0} Voto(s) para ABSOLVER`}
                                     color="success"
                                     variant="outlined"
                                 />

@@ -60,15 +60,15 @@ export default function NovoProtesto() {
     useEffect(() => {
         if (selectedRaceId) {
             const race = races.find(r => r.id === selectedRaceId);
-            if (race) {
+            if (race && race.drivers) {
                 setDrivers(race.drivers);
 
                 // Check 24h Deadline
-                const raceDate = new Date(race.date).getTime();
+                const raceDate = race.date ? new Date(race.date).getTime() : 0;
                 const now = Date.now();
                 const twentyFourHours = 24 * 60 * 60 * 1000;
 
-                if (now > raceDate + twentyFourHours) {
+                if (raceDate && now > raceDate + twentyFourHours) {
                     setIsDeadlineExpired(true);
                     setSnackbar({
                         open: true,
@@ -78,6 +78,8 @@ export default function NovoProtesto() {
                 } else {
                     setIsDeadlineExpired(false);
                 }
+            } else {
+                setDrivers([]);
             }
         } else {
             setDrivers([]);

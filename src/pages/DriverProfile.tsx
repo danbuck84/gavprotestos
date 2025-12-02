@@ -8,6 +8,8 @@ import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 import type { Protest } from '../types';
 import UserName from '../components/UserName';
+import { translateStatus } from '../utils/translations';
+import { formatDateOnly } from '../utils/dateUtils';
 
 export default function DriverProfile() {
     const { id } = useParams<{ id: string }>();
@@ -49,9 +51,11 @@ export default function DriverProfile() {
                 console.log('📥 Found protests where user is ACCUSER:', accuserProtests.length, accuserProtests);
 
                 // Combine and sort client-side (no index needed!)
-                const allProtests = [...accusedProtests, ...accuserProtests].sort((a, b) =>
-                    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-                );
+                const allProtests = [...accusedProtests, ...accuserProtests].sort((a, b) => {
+                    const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+                    const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+                    return dateB - dateA;
+                });
                 console.log('📊 Total combined protests:', allProtests.length);
 
                 // Remove duplicates if any (shouldn't be, but good practice)
@@ -62,7 +66,7 @@ export default function DriverProfile() {
 
                 // Calculate Stats
                 const penaltiesCount = accusedProtests.filter(p =>
-                    p.status === 'accepted' || (p.status === 'concluded' && p.verdict === 'Punido')
+                    p?.status === 'accepted' || (p?.status === 'concluded' && p?.verdict === 'Punido')
                 ).length;
 
                 console.log('\ud83d\udcca Stats calculation:', {
@@ -129,7 +133,7 @@ export default function DriverProfile() {
 
             {/* History */}
             <Typography variant="h5" gutterBottom>Histórico de Protestos</Typography>
-            {history.length === 0 ? (
+            {!history || history.length === 0 ? (
                 <Typography color="text.secondary">Nenhum registro encontrado.</Typography>
             ) : (
                 <Paper elevation={2}>
@@ -145,8 +149,8 @@ export default function DriverProfile() {
                                                         {protest.accuserId === id ? 'Autor' : 'Acusado'} em {protest.raceId}
                                                     </Typography>
                                                     <Chip
-                                                        label={protest.status === 'concluded' ? protest.verdict : protest.status}
-                                                        color={protest.status === 'concluded' && protest.verdict === 'Punido' ? 'error' : 'default'}
+                                                        label={protest?.status === 'concluded' ? (protest?.verdict || 'Concluído') : translateStatus(protest?.status || '')}
+                                                        color={protest?.status === 'concluded' && protest?.verdict === 'Punido' ? 'error' : 'default'}
                                                         size="small"
                                                     />
                                                 </Box>
@@ -157,7 +161,7 @@ export default function DriverProfile() {
                                                         Contra: <UserName uid={protest.accuserId === id ? protest.accusedId : protest.accuserId} />
                                                     </Typography>
                                                     <br />
-                                                    {new Date(protest.createdAt).toLocaleDateString()} - {protest.description.substring(0, 100)}...
+                                                    {formatDateOnly(protest.createdAt)} - {protest?.description?.substring(0, 100) || 'Sem descrição'}...
                                                 </>
                                             }
                                         />
