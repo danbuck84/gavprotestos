@@ -5,12 +5,11 @@ const openid = require("openid");
 admin.initializeApp();
 
 // Configuration
-// You need to set these env vars or replace with hardcoded values for testing
-// firebase functions:config:set steam.realm="http://localhost:5173/" steam.return_url="http://localhost:5173/login"
-// For production: realm="https://your-app.web.app/" return_url="https://your-app.web.app/login"
+// Auto-detect environment
+const isEmulator = process.env.FUNCTIONS_EMULATOR === 'true';
 
-const STEAM_REALM = process.env.STEAM_REALM || "http://localhost:5173/";
-const STEAM_RETURN_URL = process.env.STEAM_RETURN_URL || "http://localhost:5173/login";
+const STEAM_REALM = process.env.STEAM_REALM || (isEmulator ? "http://localhost:5173/" : "https://gavprotestos.netlify.app/");
+const STEAM_RETURN_URL = process.env.STEAM_RETURN_URL || (isEmulator ? "http://localhost:5173/login" : "https://gavprotestos.netlify.app/login");
 
 const relyingParty = new openid.RelyingParty(
     STEAM_RETURN_URL, // Return URL
