@@ -8,6 +8,7 @@ import type { Protest } from '../types';
 
 import NotificationBell from '../components/NotificationBell';
 import ProtestCard from '../components/ProtestCard';
+import UserName from '../components/UserName';
 
 export default function Dashboard() {
     const navigate = useNavigate();
@@ -178,7 +179,9 @@ export default function Dashboard() {
                             {protests.map((protest) => (
                                 <TableRow key={protest.id}>
                                     <TableCell>{protest.createdAt && new Date(protest.createdAt).toLocaleDateString()}</TableCell>
-                                    <TableCell>{protest.accusedId}</TableCell>
+                                    <TableCell>
+                                        <UserName uid={protest.accusedId} />
+                                    </TableCell>
                                     <TableCell>
                                         <Chip
                                             label={protest.status === 'pending' ? 'Pendente' : protest.status === 'under_review' ? 'Em Análise' : 'Concluído'}

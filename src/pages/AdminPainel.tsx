@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Container, Typography, Box, Button, Alert, CircularProgress, List, ListItem, ListItemText, IconButton, Divider, Paper, Chip, useMediaQuery, useTheme } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -8,6 +7,7 @@ import { db } from '../firebase';
 import type { Race, Protest } from '../types';
 import NotificationBell from '../components/NotificationBell';
 import ProtestCard from '../components/ProtestCard';
+import UserName from '../components/UserName';
 
 import { useNavigate } from 'react-router-dom';
 
@@ -205,14 +205,14 @@ export default function AdminPainel() {
                                                             style={{ cursor: 'pointer', textDecoration: 'underline' }}
                                                             onClick={() => navigate(`/admin/piloto/${protest.accuserId}`)}
                                                         >
-                                                            {protest.accuserId}
+                                                            <UserName uid={protest.accuserId} />
                                                         </span>
                                                         {' vs '}
                                                         <span
                                                             style={{ cursor: 'pointer', textDecoration: 'underline' }}
                                                             onClick={() => navigate(`/admin/piloto/${protest.accusedId}`)}
                                                         >
-                                                            {protest.accusedId}
+                                                            <UserName uid={protest.accusedId} />
                                                         </span>
                                                     </Typography>
                                                     <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>

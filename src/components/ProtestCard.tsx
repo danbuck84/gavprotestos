@@ -2,6 +2,8 @@ import { Card, CardContent, CardActions, Typography, Button, Chip, Box, Divider 
 import { useNavigate } from 'react-router-dom';
 import type { Protest } from '../types';
 
+import UserName from './UserName';
+
 interface ProtestCardProps {
     protest: Protest;
     isAdminView?: boolean;
@@ -34,8 +36,9 @@ export default function ProtestCard({ protest, isAdminView = false }: ProtestCar
         <Card sx={{ mb: 2, width: '100%' }}>
             <CardContent sx={{ pb: 1 }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+
                     <Typography variant="h6" component="div" sx={{ fontWeight: 'bold' }}>
-                        {protest.accusedId}
+                        <UserName uid={protest.accusedId} variant="h6" fontWeight="bold" />
                     </Typography>
                     <Chip
                         label={getStatusLabel(protest.status)}

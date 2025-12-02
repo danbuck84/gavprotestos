@@ -15,6 +15,7 @@ import { ref, deleteObject } from 'firebase/storage';
 import { db, auth, storage } from '../firebase';
 import type { Protest, Vote, ProtestStatus, Race } from '../types';
 import { isSuperAdmin } from '../utils/permissions';
+import UserName from '../components/UserName';
 
 export default function JudgmentDetail() {
     const { id } = useParams<{ id: string }>();
@@ -164,7 +165,7 @@ export default function JudgmentDetail() {
     };
 
     const handleSubmitVote = async () => {
-        if (!protest || !auth.currentUser || !reason.trim()) return;
+        if (!protest || !auth.currentUser) return;
 
         setVoting(true);
         try {
@@ -335,7 +336,9 @@ export default function JudgmentDetail() {
                         <Box>
                             <Typography variant="overline" color="text.secondary">Protesto</Typography>
                             <Typography variant="h6" fontWeight="bold">
-                                {protest.accuserId} <Typography component="span" color="text.secondary">vs</Typography> {protest.accusedId}
+                                <UserName uid={protest.accuserId} variant="h6" fontWeight="bold" />
+                                <Typography component="span" color="text.secondary" sx={{ mx: 1 }}>vs</Typography>
+                                <UserName uid={protest.accusedId} variant="h6" fontWeight="bold" />
                             </Typography>
                             <Typography variant="body2" color="text.secondary">
                                 {race?.trackName} - {protest.heat}
@@ -395,30 +398,46 @@ export default function JudgmentDetail() {
                 {votes.length > 0 && (
                     <Paper elevation={0} sx={{ p: 2 }}>
                         <Typography variant="subtitle1" fontWeight="bold" gutterBottom>Votos dos Comissários</Typography>
-                        <List disablePadding>
-                            {votes.map((vote, index) => (
-                                <ListItem key={index} alignItems="flex-start" sx={{ px: 0 }}>
-                                    <ListItemText
-                                        primary={
-                                            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                                                <Typography variant="body2" fontWeight="bold">{vote.adminName}</Typography>
-                                                <Chip
-                                                    label={vote.verdict === 'punish' ? 'PUNIR' : 'ABSOLVER'}
-                                                    color={vote.verdict === 'punish' ? 'error' : 'success'}
-                                                    size="small"
-                                                    variant="outlined"
-                                                />
-                                            </Box>
-                                        }
-                                        secondary={
-                                            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                                                {vote.reason}
-                                            </Typography>
-                                        }
-                                    />
-                                </ListItem>
-                            ))}
-                        </List>
+
+                        {isSuper ? (
+                            <List disablePadding>
+                                {votes.map((vote, index) => (
+                                    <ListItem key={index} alignItems="flex-start" sx={{ px: 0 }}>
+                                        <ListItemText
+                                            primary={
+                                                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                    <Typography variant="body2" fontWeight="bold">{vote.adminName}</Typography>
+                                                    <Chip
+                                                        label={vote.verdict === 'punish' ? 'PUNIR' : 'ABSOLVER'}
+                                                        color={vote.verdict === 'punish' ? 'error' : 'success'}
+                                                        size="small"
+                                                        variant="outlined"
+                                                    />
+                                                </Box>
+                                            }
+                                            secondary={
+                                                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                                                    {vote.reason}
+                                                </Typography>
+                                            }
+                                        />
+                                    </ListItem>
+                                ))}
+                            </List>
+                        ) : (
+                            <Box sx={{ display: 'flex', gap: 2, mt: 1 }}>
+                                <Chip
+                                    label={`${votes.filter(v => v.verdict === 'punish').length} Voto(s) para PUNIR`}
+                                    color="error"
+                                    variant="outlined"
+                                />
+                                <Chip
+                                    label={`${votes.filter(v => v.verdict === 'acquit').length} Voto(s) para ABSOLVER`}
+                                    color="success"
+                                    variant="outlined"
+                                />
+                            </Box>
+                        )}
                     </Paper>
                 )}
             </Stack>
