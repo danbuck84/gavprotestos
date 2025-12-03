@@ -24,13 +24,20 @@ export default function ProtestCard({ protest, isAdminView = false }: ProtestCar
     };
 
     return (
-        <Card sx={{ mb: 2, width: '100%' }}>
+        <Card
+            sx={{ mb: 2, width: '100%', cursor: 'pointer', transition: 'transform 0.2s', '&:hover': { transform: 'scale(1.02)' } }}
+            onClick={() => navigate(isAdminView ? `/admin/julgamento/${protest.id}` : `/admin/julgamento/${protest.id}`)}
+        >
             <CardContent sx={{ pb: 1 }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
-
-                    <Typography variant="h6" component="div" sx={{ fontWeight: 'bold' }}>
-                        <UserName uid={protest.accusedId} variant="h6" fontWeight="bold" />
-                    </Typography>
+                    <Box>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+                            Contra:
+                        </Typography>
+                        <Typography variant="h6" component="div" sx={{ fontWeight: 'bold' }}>
+                            <UserName uid={protest.accusedId} variant="h6" fontWeight="bold" />
+                        </Typography>
+                    </Box>
                     <Chip
                         label={translateStatus(protest.status)}
                         color={getStatusColor(protest.status) as any}
@@ -60,7 +67,10 @@ export default function ProtestCard({ protest, isAdminView = false }: ProtestCar
                     fullWidth
                     variant="text"
                     color="primary"
-                    onClick={() => navigate(isAdminView ? `/admin/julgamento/${protest.id}` : `/admin/julgamento/${protest.id}`)} // Both go to detail for now, maybe different for user?
+                    onClick={(e) => {
+                        e.stopPropagation(); // Evita duplo clique se clicar no botão
+                        navigate(isAdminView ? `/admin/julgamento/${protest.id}` : `/admin/julgamento/${protest.id}`);
+                    }}
                 >
                     Ver Detalhes
                 </Button>

@@ -10,6 +10,7 @@ import AdminUsers from './pages/AdminUsers';
 import DriverProfile from './pages/DriverProfile';
 import JudgmentDetail from './pages/JudgmentDetail';
 import AdminRaceDetail from './pages/AdminRaceDetail';
+import Regulamento from './pages/Regulamento';
 import MainLayout from './layouts/MainLayout';
 
 
@@ -23,6 +24,7 @@ function App() {
           <Route element={<MainLayout />}>
             <Route path="/" element={<Dashboard />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/regulamento" element={<Regulamento />} />
             <Route path="/novo-protesto" element={<NovoProtesto />} />
             <Route
               path="/admin"
