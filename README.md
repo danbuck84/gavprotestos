@@ -17,11 +17,55 @@ Desenvolvido para a liga [**Guerreiros do AV**](https://www.instagram.com/guerre
 
 ## 📋 Índice
 
+- [Como Instalar o App](#-como-instalar-o-app-pwa)
 - [Tech Stack](#-tech-stack)
 - [Funcionalidades](#-funcionalidades-chave)
 - [Workflows](#-fluxos-de-usuário)
 - [Instalação](#-instalação--dev-setup)
 - [Roadmap](#-roadmap)
+
+---
+
+## 📱 Como Instalar o App (PWA)
+
+**GAV Protestos funciona como um aplicativo nativo**, mas sem ocupar espaço de armazenamento e sem precisar baixar de lojas. É um Progressive Web App (PWA) que você instala diretamente do navegador.
+
+### 🤖 Android (Google Chrome)
+
+1. **Acesse** o sistema pelo link: [gavprotestos.netlify.app](https://gavprotestos.netlify.app)
+2. **Toque no ícone de Menu** (três pontinhos **︙**) no canto superior direito do navegador
+3. **Selecione** a opção **"Instalar aplicativo"** ou **"Adicionar à tela inicial"**
+4. **Confirme** clicando em **"Instalar"**
+5. ✅ **Pronto!** O ícone do GAV Protestos aparecerá na sua tela inicial junto com seus outros apps
+
+**Dica**: Caso não apareça a opção "Instalar aplicativo" no menu, procure por um ícone de **+** ou **⊕** na barra de endereços.
+
+---
+
+### 🍎 iOS (iPhone/iPad - Safari)
+
+1. **Abra o Safari** e acesse: [gavprotestos.netlify.app](https://gavprotestos.netlify.app)  
+   ⚠️ **Importante**: Use o **Safari**. Outros navegadores (Chrome, Firefox) não permitem instalação de PWAs no iOS.
+
+2. **Toque no botão Compartilhar** (ícone de quadrado com seta para cima **↥**) localizado na barra inferior
+
+3. **Role o menu para baixo** até encontrar a opção **"Adicionar à Tela de Início"** (ícone com um **⊞** ao lado)
+
+4. **Toque em "Adicionar"** no canto superior direito para confirmar
+
+5. ✅ **Pronto!** O app GAV Protestos estará na sua tela inicial com ícone personalizado
+
+---
+
+### ⚡ Vantagens de Instalar como PWA
+
+Ao instalar o GAV Protestos como aplicativo:
+
+- **📱 Experiência Nativa**: Abre em tela cheia, sem barras de navegador
+- **🚀 Mais Rápido**: Cache local acelera o carregamento
+- **📶 Funciona Offline**: Acesso a dados em cache mesmo sem internet
+- **🔔 Notificações**: (em breve) Receba alertas de prazos e vereditos
+- **🎨 Ícone Personalizado**: Aparece na tela inicial como app nativo
 
 ---
 
@@ -295,7 +339,7 @@ Para sugestões ou bugs, entre em contato com a administração da liga.
 
 ## 📜 Licença
 
-**Proprietary License** - © 2024 Guerreiros do AV
+**Proprietary License** - © 2025 Guerreiros do AV
 
 Todos os direitos reservados. Uso não autorizado é proibido.
 
