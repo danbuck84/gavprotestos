@@ -2,10 +2,12 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
     Container, Typography, Box, Paper,
-    List, ListItem, ListItemText, Divider, Chip, CircularProgress, Avatar, ListItemButton
+    List, ListItem, ListItemText, Divider, Chip, CircularProgress, Avatar, ListItemButton, Button
 } from '@mui/material';
 import { collection, query, where, getDocs } from 'firebase/firestore';
-import { db } from '../firebase';
+import { signOut } from 'firebase/auth';
+import { db, auth } from '../firebase';
+import LogoutIcon from '@mui/icons-material/Logout';
 import type { Protest } from '../types';
 import UserName from '../components/UserName';
 import { translateStatus } from '../utils/translations';
@@ -172,6 +174,27 @@ export default function DriverProfile() {
                         ))}
                     </List>
                 </Paper>
+            )}
+            {/* Logout Button (Only for own profile) */}
+            {auth.currentUser && (auth.currentUser.uid === id || id === 'me' || id === auth.currentUser.uid.replace('steam:', '')) && (
+                <Box sx={{ mt: 6, mb: 4 }}>
+                    <Button
+                        variant="contained"
+                        color="error"
+                        fullWidth
+                        size="large"
+                        startIcon={<LogoutIcon />}
+                        onClick={async () => {
+                            if (window.confirm("Deseja realmente sair?")) {
+                                await signOut(auth);
+                                navigate('/login');
+                            }
+                        }}
+                        sx={{ fontWeight: 'bold', py: 1.5 }}
+                    >
+                        SAIR DO SISTEMA
+                    </Button>
+                </Box>
             )}
         </Container>
     );

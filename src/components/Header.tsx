@@ -1,32 +1,13 @@
-import { AppBar, Toolbar, Box, IconButton, Avatar, Menu, MenuItem, Typography } from '@mui/material';
+import { AppBar, Toolbar, Box, IconButton, Avatar, Typography } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import NotificationBell from './NotificationBell';
 import { auth } from '../firebase';
-import { signOut } from 'firebase/auth';
-import { useState } from 'react';
 import { getInitials } from '../utils/stringUtils';
 
 export default function Header() {
     const navigate = useNavigate();
     const user = auth.currentUser;
-    const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-
-    const handleMenu = (event: React.MouseEvent<HTMLElement>) => {
-        setAnchorEl(event.currentTarget);
-    };
-
-    const handleClose = () => {
-        setAnchorEl(null);
-    };
-
-    const handleLogout = async () => {
-        handleClose();
-        await signOut(auth);
-        navigate('/login');
-    };
-
     const handleProfile = () => {
-        handleClose();
         if (user) navigate(`/admin/piloto/${user.uid}`);
     };
 
@@ -45,31 +26,11 @@ export default function Header() {
                     {user && <NotificationBell />}
 
                     {user ? (
-                        <>
-                            <IconButton onClick={handleMenu} sx={{ p: 0 }}>
-                                <Avatar src={user.photoURL || undefined} alt={user.displayName || 'User'}>
-                                    {getInitials(user.displayName)}
-                                </Avatar>
-                            </IconButton>
-                            <Menu
-                                id="menu-appbar"
-                                anchorEl={anchorEl}
-                                anchorOrigin={{
-                                    vertical: 'top',
-                                    horizontal: 'right',
-                                }}
-                                keepMounted
-                                transformOrigin={{
-                                    vertical: 'top',
-                                    horizontal: 'right',
-                                }}
-                                open={Boolean(anchorEl)}
-                                onClose={handleClose}
-                            >
-                                <MenuItem onClick={handleProfile}>Meu Perfil</MenuItem>
-                                <MenuItem onClick={handleLogout}>Sair</MenuItem>
-                            </Menu>
-                        </>
+                        <IconButton onClick={handleProfile} sx={{ p: 0 }}>
+                            <Avatar src={user.photoURL || undefined} alt={user.displayName || 'User'}>
+                                {getInitials(user.displayName)}
+                            </Avatar>
+                        </IconButton>
                     ) : !user ? (
                         <Typography
                             variant="button"

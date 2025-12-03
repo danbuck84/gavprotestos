@@ -1,12 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Container, Typography, Box, Button, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip, CircularProgress, Alert, Avatar, useMediaQuery, useTheme, Dialog, DialogTitle, DialogContent, DialogActions, TextField } from '@mui/material';
+import { Container, Typography, Box, Button, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip, CircularProgress, Alert, useMediaQuery, useTheme, Dialog, DialogTitle, DialogContent, DialogActions, TextField } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { auth, db } from '../firebase';
-import { onAuthStateChanged, signOut, updateProfile, type User } from 'firebase/auth';
+import { onAuthStateChanged, updateProfile, type User } from 'firebase/auth';
 import { collection, query, where, getDocs, orderBy, doc, setDoc } from 'firebase/firestore';
 import type { Protest } from '../types';
 
-import NotificationBell from '../components/NotificationBell';
 import ProtestCard from '../components/ProtestCard';
 import UserName from '../components/UserName';
 import { translateStatus } from '../utils/translations';
@@ -74,9 +73,7 @@ export default function Dashboard() {
         }
     }, [user]);
 
-    const handleLogout = async () => {
-        await signOut(auth);
-    };
+
 
     const handleSaveProfile = async () => {
         if (!user || !driverName.trim()) return;
@@ -117,24 +114,6 @@ export default function Dashboard() {
                 <Typography variant="h4" component="h1">
                     GAV Protestos
                 </Typography>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                    {user && <NotificationBell />}
-                    {user ? (
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <Chip
-                                avatar={<Avatar src={user.photoURL || undefined}>{user.displayName?.[0] || 'U'}</Avatar>}
-                                label={user.displayName || 'Usuário'}
-                            />
-                            <Button variant="text" color="inherit" onClick={handleLogout}>
-                                Sair
-                            </Button>
-                        </Box>
-                    ) : (
-                        <Button variant="outlined" onClick={() => navigate('/login')}>
-                            Login
-                        </Button>
-                    )}
-                </Box>
             </Box>
 
             <Box sx={{ display: 'flex', gap: 2, mb: 4 }}>

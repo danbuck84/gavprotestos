@@ -29,12 +29,12 @@ export default function ProtestCard({ protest, isAdminView = false }: ProtestCar
             onClick={() => navigate(isAdminView ? `/admin/julgamento/${protest.id}` : `/admin/julgamento/${protest.id}`)}
         >
             <CardContent sx={{ pb: 1 }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
-                    <Box>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1, minWidth: 0 }}>
+                    <Box sx={{ minWidth: 0, flex: 1, mr: 1 }}>
                         <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
                             Contra:
                         </Typography>
-                        <Typography variant="h6" component="div" sx={{ fontWeight: 'bold' }}>
+                        <Typography variant="h6" component="div" sx={{ fontWeight: 'bold', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                             <UserName uid={protest.accusedId} variant="h6" fontWeight="bold" />
                         </Typography>
                     </Box>
@@ -43,6 +43,7 @@ export default function ProtestCard({ protest, isAdminView = false }: ProtestCar
                         color={getStatusColor(protest.status) as any}
                         size="small"
                         variant="outlined"
+                        sx={{ flexShrink: 0 }}
                     />
                 </Box>
 
@@ -55,7 +56,8 @@ export default function ProtestCard({ protest, isAdminView = false }: ProtestCar
                     overflow: 'hidden',
                     WebkitBoxOrient: 'vertical',
                     WebkitLineClamp: 2,
-                    mb: 1
+                    mb: 1,
+                    wordBreak: 'break-word'
                 }}>
                     {protest.description}
                 </Typography>
