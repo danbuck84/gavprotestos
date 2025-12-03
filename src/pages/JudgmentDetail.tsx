@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
     Container, Typography, Box, Paper, Button, TextField,
     FormControl, RadioGroup, FormControlLabel, Radio,
-    CircularProgress, Chip, List, ListItem, ListItemText, Alert, Snackbar,
+    CircularProgress, Chip, Alert, Snackbar,
     Stack, Dialog, DialogTitle, DialogContent, DialogActions
 } from '@mui/material';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
@@ -29,7 +29,6 @@ export default function JudgmentDetail() {
     const [voting, setVoting] = useState(false);
 
     // Lifecycle State
-    const [lifecyclePhase, setLifecyclePhase] = useState<'submission' | 'voting' | 'concluded'>('submission');
     const [timeRemaining, setTimeRemaining] = useState('');
 
     // Vote Form State
@@ -107,11 +106,9 @@ export default function JudgmentDetail() {
             const hoursSinceRace = (now - raceDate) / (1000 * 60 * 60);
 
             if (hoursSinceRace < 24) {
-                setLifecyclePhase('submission');
                 const hoursLeft = 24 - hoursSinceRace;
                 setTimeRemaining(`${Math.floor(hoursLeft)}h ${Math.round((hoursLeft % 1) * 60)}m para abrir votação`);
             } else if (hoursSinceRace < 48) {
-                setLifecyclePhase('voting');
                 const hoursLeft = 48 - hoursSinceRace;
                 setTimeRemaining(`${Math.floor(hoursLeft)}h ${Math.round((hoursLeft % 1) * 60)}m para encerrar votação`);
 
@@ -119,7 +116,6 @@ export default function JudgmentDetail() {
                     await updateDoc(doc(db, 'protests', protest.id), { status: 'under_review' });
                 }
             } else {
-                setLifecyclePhase('concluded');
                 setTimeRemaining('Votação Encerrada');
 
                 if (protest.status !== 'concluded' && protest.status !== 'inconclusive') {
@@ -198,7 +194,6 @@ export default function JudgmentDetail() {
 
             // If forcing to voting, update lifecycle phase and show vote form
             if (newStatus === 'under_review') {
-                setLifecyclePhase('voting');
                 if (isSuper) {
                     setShowVoteForm(true);
                 }
@@ -456,51 +451,24 @@ export default function JudgmentDetail() {
                     <Paper elevation={0} sx={{ p: 2 }}>
                         <Typography variant="subtitle1" fontWeight="bold" gutterBottom>Votos dos Comissários</Typography>
 
-                        {isSuper ? (
-                            <List disablePadding>
-                                {votes.map((vote, index) => (
-                                    <ListItem key={index} alignItems="flex-start" sx={{ px: 0 }}>
-                                        <ListItemText
-                                            primary={
-                                                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                                                    <Typography variant="body2" fontWeight="bold">{vote.adminName}</Typography>
-                                                    <Chip
-                                                        label={vote.verdict === 'punish' ? 'PUNIR' : 'ABSOLVER'}
-                                                        color={vote.verdict === 'punish' ? 'error' : 'success'}
-                                                        size="small"
-                                                        variant="outlined"
-                                                    />
-                                                </Box>
-                                            }
-                                            secondary={
-                                                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                                                    {vote.reason}
-                                                </Typography>
-                                            }
-                                        />
-                                    </ListItem>
-                                ))}
-                            </List>
-                        ) : (
-                            <Box sx={{ display: 'flex', gap: 2, mt: 1 }}>
-                                <Chip
-                                    label={`${votes?.filter(v => v?.verdict === 'punish').length || 0} Voto(s) para PUNIR`}
-                                    color="error"
-                                    variant="outlined"
-                                    size="small"
-                                />
-                                <Chip
-                                    label={`${votes?.filter(v => v?.verdict === 'acquit').length || 0} Voto(s) para ABSOLVER`}
-                                    color="success"
-                                    variant="outlined"
-                                />
-                            </Box>
-                        )}
+                        <Box sx={{ display: 'flex', gap: 2, mt: 1 }}>
+                            <Chip
+                                label={`${votes?.filter(v => v?.verdict === 'punish').length || 0} Voto(s) para PUNIR`}
+                                color="error"
+                                variant="outlined"
+                                size="small"
+                            />
+                            <Chip
+                                label={`${votes?.filter(v => v?.verdict === 'acquit').length || 0} Voto(s) para ABSOLVER`}
+                                color="success"
+                                variant="outlined"
+                            />
+                        </Box>
                     </Paper>
                 )}
 
                 {/* Voting Panel - Now in document flow */}
-                {lifecyclePhase === 'voting' && !hasVoted && (
+                {protest.status === 'under_review' && !hasVoted && (
                     <Paper
                         sx={{
                             p: 3,

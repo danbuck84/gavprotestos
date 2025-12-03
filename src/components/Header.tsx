@@ -1,4 +1,4 @@
-import { AppBar, Toolbar, Box, IconButton, Avatar, Menu, MenuItem, Typography, useMediaQuery, useTheme } from '@mui/material';
+import { AppBar, Toolbar, Box, IconButton, Avatar, Menu, MenuItem, Typography } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import NotificationBell from './NotificationBell';
 import { auth } from '../firebase';
@@ -8,8 +8,6 @@ import { getInitials } from '../utils/stringUtils';
 
 export default function Header() {
     const navigate = useNavigate();
-    const theme = useTheme();
-    const isMobile = useMediaQuery(theme.breakpoints.down('md'));
     const user = auth.currentUser;
     const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
@@ -44,9 +42,9 @@ export default function Header() {
                 />
 
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0 }}>
-                    {!isMobile && user && <NotificationBell />}
+                    {user && <NotificationBell />}
 
-                    {!isMobile && user ? (
+                    {user ? (
                         <>
                             <IconButton onClick={handleMenu} sx={{ p: 0 }}>
                                 <Avatar src={user.photoURL || undefined} alt={user.displayName || 'User'}>
@@ -72,7 +70,7 @@ export default function Header() {
                                 <MenuItem onClick={handleLogout}>Sair</MenuItem>
                             </Menu>
                         </>
-                    ) : !isMobile && !user ? (
+                    ) : !user ? (
                         <Typography
                             variant="button"
                             onClick={() => navigate('/login')}
