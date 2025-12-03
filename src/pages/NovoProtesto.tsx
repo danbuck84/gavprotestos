@@ -282,6 +282,7 @@ export default function NovoProtesto() {
                     required
                     fullWidth
                     margin="normal"
+                    inputProps={{ min: 0, max: 100 }}
                     helperText="Quantas posições você perdeu devido ao incidente?"
                 />
 

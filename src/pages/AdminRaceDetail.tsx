@@ -9,7 +9,7 @@ import type { Protest, Race } from '../types';
 import ProtestCard from '../components/ProtestCard';
 
 export default function AdminRaceDetail() {
-    const { raceId } = useParams<{ raceId: string }>();
+    const { id } = useParams<{ id: string }>();
     const [race, setRace] = useState<Race | null>(null);
     const [protests, setProtests] = useState<Protest[]>([]);
     const [loading, setLoading] = useState(true);
@@ -17,11 +17,11 @@ export default function AdminRaceDetail() {
 
     useEffect(() => {
         const fetchData = async () => {
-            if (!raceId) return;
+            if (!id) return;
             setLoading(true);
             try {
                 // Fetch race details
-                const raceDoc = await getDoc(doc(db, 'races', raceId));
+                const raceDoc = await getDoc(doc(db, 'races', id));
                 if (raceDoc.exists()) {
                     setRace({ id: raceDoc.id, ...raceDoc.data() } as Race);
                 }
@@ -29,7 +29,7 @@ export default function AdminRaceDetail() {
                 // Fetch protests for this race
                 const q = query(
                     collection(db, 'protests'),
-                    where('raceId', '==', raceId)
+                    where('raceId', '==', id)
                 );
                 const snapshot = await getDocs(q);
                 const protestsData = snapshot.docs.map(doc => ({
@@ -53,7 +53,7 @@ export default function AdminRaceDetail() {
         };
 
         fetchData();
-    }, [raceId]);
+    }, [id]);
 
     const getFilteredProtests = () => {
         if (!protests || protests.length === 0) return [];

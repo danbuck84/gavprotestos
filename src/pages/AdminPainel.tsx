@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Container, Typography, Box, Button, Alert, CircularProgress, Paper, Chip, List, ListItem, ListItemText, IconButton, Divider } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { parseRaceJson } from '../services/raceParser';
-import { collection, addDoc, query, where, getDocs, deleteDoc, doc, onSnapshot, orderBy } from 'firebase/firestore';
+import { collection, addDoc, query, where, getDocs, deleteDoc, doc, onSnapshot, orderBy, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import type { Race, Protest } from '../types';
 import NotificationBell from '../components/NotificationBell';
@@ -69,12 +69,41 @@ export default function AdminPainel() {
                     return;
                 }
 
-                // Save to Firestore
+                // Save race to Firestore
                 const docRef = await addDoc(collection(db, 'races'), raceData);
+
+                // UPSERT: Update or Insert drivers to prevent duplicates
+                let driversUpdated = 0;
+                let driversCreated = 0;
+
+                for (const driver of raceData.drivers) {
+                    if (!driver.steamId) continue;
+
+                    // Use steamId as Document ID to ensure physical uniqueness
+                    const userDocRef = doc(db, 'users', driver.steamId);
+                    const userSnapshot = await getDoc(userDocRef);
+
+                    if (userSnapshot.exists()) {
+                        // User exists - update displayName only
+                        await updateDoc(userDocRef, {
+                            displayName: driver.name
+                        });
+                        driversUpdated++;
+                    } else {
+                        // User does not exist - create new with steamId as Document ID
+                        await setDoc(userDocRef, {
+                            steamId64: driver.steamId,
+                            displayName: driver.name,
+                            role: 'driver',
+                            createdAt: serverTimestamp()
+                        });
+                        driversCreated++;
+                    }
+                }
 
                 setMessage({
                     type: 'success',
-                    text: `Corrida "${raceData.trackName}" importada com sucesso! ID: ${docRef.id} com ${raceData.drivers.length} pilotos.`
+                    text: `Corrida "${raceData.trackName}" importada com sucesso! ID: ${docRef.id} com ${raceData.drivers.length} pilotos (${driversCreated} novos, ${driversUpdated} atualizados).`
                 });
             } catch (error) {
                 console.error("Erro ao importar:", error);

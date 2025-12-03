@@ -9,6 +9,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import AdminUsers from './pages/AdminUsers';
 import DriverProfile from './pages/DriverProfile';
 import JudgmentDetail from './pages/JudgmentDetail';
+import AdminRaceDetail from './pages/AdminRaceDetail';
 import MainLayout from './layouts/MainLayout';
 
 
@@ -44,6 +45,14 @@ function App() {
                 <JudgmentDetail />
               </ProtectedRoute>
             } />
+            <Route
+              path="/admin/corrida/:id"
+              element={
+                <ProtectedRoute>
+                  <AdminRaceDetail />
+                </ProtectedRoute>
+              }
+            />
             <Route
               path="/admin/piloto/:id"
               element={
