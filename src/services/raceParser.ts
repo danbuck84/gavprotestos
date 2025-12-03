@@ -37,6 +37,7 @@ export const parseRaceJson = (jsonData: any): Race => {
         eventName: jsonData.EventName || '',
         trackName: jsonData.TrackName || 'Desconhecida',
         date: jsonData.Date || new Date().toISOString(),
+        type: jsonData.Type || 'RACE', // Captura Type do JSON (RACE, QUALIFY, PRACTICE)
         drivers
     };
 };

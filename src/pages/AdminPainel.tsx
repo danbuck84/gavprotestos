@@ -87,6 +87,20 @@ export default function AdminPainel() {
         return eventMatch || trackMatch || dateMatch;
     };
 
+    // Helper: Get session type configuration for badge
+    const getSessionTypeConfig = (type: string) => {
+        switch (type) {
+            case 'RACE':
+                return { label: 'CORRIDA', color: 'error' as const }; // Vermelho
+            case 'QUALIFY':
+                return { label: 'QUALIFY', color: 'secondary' as const }; // Roxo
+            case 'PRACTICE':
+                return { label: 'TREINO', color: 'default' as const }; // Cinza
+            default:
+                return { label: type, color: 'default' as const };
+        }
+    };
+
     // Separate races into active and historical
     const { activeRaces, historicalRaces } = useMemo(() => {
         const active: Race[] = [];
@@ -350,6 +364,9 @@ export default function AdminPainel() {
                                 const isOldRace = !deadlineOpen;
                                 const isCompleted = allProtestsConcluded && isOldRace;
 
+                                // Session type config
+                                const sessionType = getSessionTypeConfig(race.type);
+
                                 return (
                                     <Paper
                                         key={race.id}
@@ -368,6 +385,14 @@ export default function AdminPainel() {
                                         }}
                                         onClick={() => navigate(`/admin/corrida/${race.id}`)}
                                     >
+                                        {/* Badge de Tipo de Sessão */}
+                                        <Chip
+                                            label={sessionType.label}
+                                            color={sessionType.color}
+                                            size="small"
+                                            sx={{ mb: 1 }}
+                                        />
+
                                         <Typography variant="h6" fontWeight="bold" gutterBottom>
                                             {cardTitle}
                                         </Typography>

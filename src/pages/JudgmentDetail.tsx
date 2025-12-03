@@ -44,8 +44,7 @@ export default function JudgmentDetail() {
     const [editForm, setEditForm] = useState({
         description: '',
         videoUrls: '',
-        incidentType: '',
-        heat: ''
+        incidentType: ''
     });
 
     const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
@@ -64,8 +63,7 @@ export default function JudgmentDetail() {
                 setEditForm({
                     description: protestData.description,
                     videoUrls: protestData.videoUrls ? protestData.videoUrls.join('\n') : '',
-                    incidentType: protestData.incidentType,
-                    heat: protestData.heat
+                    incidentType: protestData.incidentType
                 });
 
                 if (protestData.raceId) {
@@ -220,8 +218,7 @@ export default function JudgmentDetail() {
             await updateDoc(doc(db, 'protests', protest.id), {
                 description: editForm.description,
                 videoUrls: videoUrlsArray,
-                incidentType: editForm.incidentType as any,
-                heat: editForm.heat as any
+                incidentType: editForm.incidentType as any
             });
             setOpenEditDialog(false);
             setSnackbar({ open: true, message: 'Protesto atualizado com sucesso!', severity: 'success' });
@@ -399,7 +396,7 @@ export default function JudgmentDetail() {
                                 <UserName uid={protest.accusedId} variant="h6" fontWeight="bold" />
                             </Typography>
                             <Typography variant="body2" color="text.secondary">
-                                {race?.trackName} - {protest.heat}
+                                {race?.eventName || race?.trackName}
                             </Typography>
                         </Box>
                         <Box sx={{ flexShrink: 0 }}>
@@ -605,12 +602,6 @@ export default function JudgmentDetail() {
                             fullWidth
                             value={editForm.incidentType}
                             onChange={(e) => setEditForm({ ...editForm, incidentType: e.target.value })}
-                        />
-                        <TextField
-                            label="Bateria"
-                            fullWidth
-                            value={editForm.heat}
-                            onChange={(e) => setEditForm({ ...editForm, heat: e.target.value })}
                         />
                     </Stack>
                 </DialogContent>

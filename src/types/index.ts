@@ -15,6 +15,7 @@ export interface Race {
   eventName: string; // EventName do JSON (ex: "Etapa 5 - Áustria")
   trackName: string; // TrackName do JSON (ex: "Red Bull Ring")
   date: string; // ISO string or timestamp
+  type: 'RACE' | 'QUALIFY' | 'PRACTICE'; // Tipo de sessão
   drivers: RaceDriver[];
 }
 
@@ -37,7 +38,6 @@ export interface Protest {
   description: string;
   videoUrls: string[];
   incidentType: 'Colisão' | 'Bloqueio' | 'Retorno Inseguro' | 'Outro';
-  heat: 'Bateria 1' | 'Bateria 2' | 'Bateria Única';
   positionsLost: number;
   status: ProtestStatus;
   verdict?: string; // 'Punido', 'Absolvido', etc.

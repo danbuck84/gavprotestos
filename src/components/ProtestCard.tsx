@@ -43,12 +43,6 @@ export default function ProtestCard({ protest, isAdminView = false }: ProtestCar
                     Etapa: {protest.raceId}
                 </Typography>
 
-                <Box sx={{ display: 'flex', gap: 2, mb: 1 }}>
-                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                        Bateria: {protest.heat}
-                    </Typography>
-                </Box>
-
                 <Typography variant="body2" color="text.primary" sx={{
                     display: '-webkit-box',
                     overflow: 'hidden',

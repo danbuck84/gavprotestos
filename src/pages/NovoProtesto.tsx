@@ -8,7 +8,6 @@ import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { db, auth, storage } from '../firebase';
 import type { Race, RaceDriver } from '../types';
 import { useNavigate } from 'react-router-dom';
-import { formatDateOnly } from '../utils/dateUtils';
 
 export default function NovoProtesto() {
     const navigate = useNavigate();
@@ -18,7 +17,6 @@ export default function NovoProtesto() {
 
     const [accusedId, setAccusedId] = useState('');
     const [lap, setLap] = useState('');
-    const [heat, setHeat] = useState<'Bateria 1' | 'Bateria 2' | 'Bateria Única'>('Bateria 1');
     const [positionsLost, setPositionsLost] = useState('');
     const [incidentType, setIncidentType] = useState('');
     const [description, setDescription] = useState('');
@@ -56,6 +54,29 @@ export default function NovoProtesto() {
         };
         fetchRaces();
     }, []);
+
+    // Helper: Format session type label
+    const getSessionTypeLabel = (type: string): string => {
+        switch (type) {
+            case 'RACE': return 'CORRIDA';
+            case 'QUALIFY': return 'QUALIFY';
+            case 'PRACTICE': return 'TREINO';
+            default: return type;
+        }
+    };
+
+    // Helper: Format race label for dropdown
+    const formatRaceLabel = (race: Race): string => {
+        const typeLabel = getSessionTypeLabel(race.type);
+        const eventName = race.eventName || race.trackName;
+        const dateStr = new Date(race.date).toLocaleString('pt-BR', {
+            day: '2-digit',
+            month: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+        return `[${typeLabel}] ${eventName} - ${dateStr}`;
+    };
 
     useEffect(() => {
         if (selectedRaceId) {
@@ -172,7 +193,6 @@ export default function NovoProtesto() {
                 accuserId: currentUserSteamId,
                 accusedId,
                 lap: Number(lap),
-                heat,
                 positionsLost: Number(positionsLost),
                 videoUrls: uploadedUrls,
                 incidentType,
@@ -217,16 +237,16 @@ export default function NovoProtesto() {
 
             <form onSubmit={handleSubmit}>
                 <FormControl fullWidth margin="normal">
-                    <InputLabel>Etapa / Corrida</InputLabel>
+                    <InputLabel>Sessão / Corrida</InputLabel>
                     <Select
                         value={selectedRaceId}
-                        label="Etapa / Corrida"
+                        label="Sessão / Corrida"
                         onChange={(e) => setSelectedRaceId(e.target.value)}
                         required
                     >
                         {races.map((race) => (
                             <MenuItem key={race.id} value={race.id}>
-                                {race.trackName} - {formatDateOnly(race.date)}
+                                {formatRaceLabel(race)}
                             </MenuItem>
                         ))}
                     </Select>
@@ -248,31 +268,15 @@ export default function NovoProtesto() {
                     </Select>
                 </FormControl>
 
-                <Box sx={{ display: 'flex', gap: 2 }}>
-                    <FormControl fullWidth margin="normal">
-                        <InputLabel>Bateria</InputLabel>
-                        <Select
-                            value={heat}
-                            label="Bateria"
-                            onChange={(e) => setHeat(e.target.value as any)}
-                            required
-                        >
-                            <MenuItem value="Bateria 1">Bateria 1</MenuItem>
-                            <MenuItem value="Bateria 2">Bateria 2</MenuItem>
-                            <MenuItem value="Bateria Única">Bateria Única</MenuItem>
-                        </Select>
-                    </FormControl>
-
-                    <TextField
-                        label="Volta"
-                        type="number"
-                        value={lap}
-                        onChange={(e) => setLap(e.target.value)}
-                        required
-                        fullWidth
-                        margin="normal"
-                    />
-                </Box>
+                <TextField
+                    label="Volta"
+                    type="number"
+                    value={lap}
+                    onChange={(e) => setLap(e.target.value)}
+                    required
+                    fullWidth
+                    margin="normal"
+                />
 
                 <TextField
                     label="Posições Perdidas"
