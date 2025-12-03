@@ -24,11 +24,18 @@ const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { onDocumentCreated, onDocumentUpdated } = require("firebase-functions/v2/firestore");
 
 exports.authWithSteam = onCall(async (request) => {
+    console.log('[authWithSteam] Initiating Steam authentication');
+    console.log('[authWithSteam] Environment:', isEmulator ? 'Emulator' : 'Production');
+    console.log('[authWithSteam] STEAM_REALM:', STEAM_REALM);
+    console.log('[authWithSteam] STEAM_RETURN_URL:', STEAM_RETURN_URL);
+
     return new Promise((resolve, reject) => {
         relyingParty.authenticate("https://steamcommunity.com/openid", false, (error, authUrl) => {
             if (error) {
-                reject(new HttpsError('internal', error.message));
+                console.error('[authWithSteam] Error generating auth URL:', error);
+                reject(new HttpsError('internal', `Failed to generate Steam auth URL: ${error.message}`));
             } else {
+                console.log('[authWithSteam] Auth URL generated successfully');
                 resolve({ url: authUrl });
             }
         });
@@ -37,42 +44,53 @@ exports.authWithSteam = onCall(async (request) => {
 
 exports.validateSteamLogin = onCall(async (request) => {
     const data = request.data;
-    const mode = data.mode;
+    console.log('[validateSteamLogin] Starting validation');
+    console.log('[validateSteamLogin] Received params keys:', Object.keys(data));
 
     return new Promise((resolve, reject) => {
         const claimedId = data['openid.claimed_id'];
         if (!claimedId) {
-            reject(new HttpsError('invalid-argument', 'Missing claimed_id'));
+            console.error('[validateSteamLogin] Missing claimed_id in request');
+            reject(new HttpsError('invalid-argument', 'Missing claimed_id - Invalid Steam response'));
             return;
         }
 
+        console.log('[validateSteamLogin] Claimed ID:', claimedId);
         const steamIdMatch = claimedId.match(/https:\/\/steamcommunity\.com\/openid\/id\/(\d+)/);
         const steamId64 = steamIdMatch ? steamIdMatch[1] : null;
 
         if (!steamId64) {
-            reject(new HttpsError('invalid-argument', 'Invalid Steam ID'));
+            console.error('[validateSteamLogin] Invalid Steam ID format:', claimedId);
+            reject(new HttpsError('invalid-argument', 'Invalid Steam ID format'));
             return;
         }
 
+        console.log('[validateSteamLogin] Extracted Steam ID64:', steamId64);
         const uid = `steam:${steamId64}`;
 
         admin.auth().createCustomToken(uid, { steamId: steamId64 })
             .then(token => {
+                console.log('[validateSteamLogin] Custom token created for:', uid);
                 const userRef = admin.firestore().collection('users').doc(uid);
                 return userRef.get().then(doc => {
                     if (!doc.exists) {
+                        console.log('[validateSteamLogin] Creating new user document');
                         return userRef.set({
                             steamId64: steamId64,
                             role: 'driver',
                             createdAt: admin.firestore.FieldValue.serverTimestamp()
                         });
+                    } else {
+                        console.log('[validateSteamLogin] User document already exists');
                     }
                 }).then(() => {
+                    console.log('[validateSteamLogin] Validation successful, returning token');
                     resolve({ token: token });
                 });
             })
             .catch(err => {
-                reject(new HttpsError('internal', err.message));
+                console.error('[validateSteamLogin] Error creating token or user:', err);
+                reject(new HttpsError('internal', `Authentication failed: ${err.message}`));
             });
     });
 });

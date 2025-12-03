@@ -67,7 +67,7 @@ Desenvolvido para a liga [**Guerreiros do AV**](https://www.instagram.com/guerre
 - Interface limpa com componentes Material Design
 
 ### 🏎️ Importação Inteligente de Resultados
-- **Drag & Drop** de JSONs do Assetto Corsa Competizione
+- **Drag & Drop** de JSONs do Assetto Corsa
 - ID Determinístico `timestamp_track_type` - **Zero duplicatas**
 - Auto-criação/atualização de usuários (Upsert)
 - Parsing automático: pilotos, tempos, posições, tipo de sessão
@@ -303,7 +303,7 @@ Todos os direitos reservados. Uso não autorizado é proibido.
 
 ## 🏆 Créditos
 
-Desenvolvido com ☕ e paixão por corridas virtuais.
+Desenvolvido com ☕ e 💜 por Daniel Buck.
 
 **Liga**: [Guerreiros do AV](https://www.instagram.com/guerreirosdoav/)
 
