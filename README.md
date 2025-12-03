@@ -1,17 +1,29 @@
+<div align="center">
+
 # 🏎️ GAV Protestos
 
-### Sistema Profissional de Gestão de Incidentes para SimRacing
+### 🏁 Sistema Profissional de Gestão de Incidentes para SimRacing 🏁
 
-![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
-![Build](https://img.shields.io/badge/build-passing-brightgreen.svg)
-![License](https://img.shields.io/badge/license-Proprietary-red.svg)
-![React](https://img.shields.io/badge/React-18-61DAFB?logo=react)
-![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript)
-![Firebase](https://img.shields.io/badge/Firebase-Cloud-FFCA28?logo=firebase)
+![Version](https://img.shields.io/badge/version-1.0.0-blue.svg?style=for-the-badge)
+![Build](https://img.shields.io/badge/build-passing-brightgreen.svg?style=for-the-badge)
+![PWA](https://img.shields.io/badge/PWA-Installable-5A0FC8?style=for-the-badge&logo=pwa&logoColor=white)
+![License](https://img.shields.io/badge/license-Proprietary-red.svg?style=for-the-badge)
 
-**Plataforma Mobile-First para gestão profissional de protestos de SimRacing, integrada via Steam e Assetto Corsa JSONs.**
+![React](https://img.shields.io/badge/React-18-61DAFB?style=for-the-badge&logo=react&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
+![Vite](https://img.shields.io/badge/Vite-7-646CFF?style=for-the-badge&logo=vite&logoColor=white)
+![Firebase](https://img.shields.io/badge/Firebase-Cloud-FFCA28?style=for-the-badge&logo=firebase&logoColor=black)
+![MUI](https://img.shields.io/badge/Material_UI-6-007FFF?style=for-the-badge&logo=mui&logoColor=white)
+![Netlify](https://img.shields.io/badge/Netlify-Deployed-00C7B7?style=for-the-badge&logo=netlify&logoColor=white)
 
-Desenvolvido para a liga [**Guerreiros do AV**](https://www.instagram.com/guerreirosdoav/) 🏁
+---
+
+### 💡 **Pitch**
+**Plataforma Mobile-First para gestão profissional de protestos de SimRacing, integrada via Steam OpenID e Assetto Corsa, com votação democrática e sistema antifraude.**
+
+🔗 **Desenvolvido para:** [**Guerreiros do AV**](https://www.instagram.com/guerreirosdoav/)
+
+</div>
 
 ---
 
@@ -343,11 +355,45 @@ Para sugestões ou bugs, entre em contato com a administração da liga.
 
 Todos os direitos reservados. Uso não autorizado é proibido.
 
+## 👨‍💻 Desenvolvedor
+
+<div align="center">
+
+### **Daniel Buck**
+*Full-Stack Developer | Firebase Specialist | SimRacing Enthusiast*
+
 ---
 
-## 🏆 Créditos
+### 📊 GitHub Stats
 
-Desenvolvido com ☕ e 💜 por Daniel Buck.
+![Daniel's GitHub Stats](https://github-readme-stats.vercel.app/api?username=danbuck84&show_icons=true&theme=radical&include_all_commits=true&count_private=true)
+
+![Top Languages](https://github-readme-stats.vercel.app/api/top-langs/?username=danbuck84&layout=compact&theme=radical&langs_count=8)
+
+<sub>📊 Stats gerados por [github-readme-stats](https://github.com/anuraghazra/github-readme-stats) - Projeto Open Source by @anuraghazra</sub>
+
+---
+
+### 🛠️ Stack Dominante
+
+![TypeScript](https://img.shields.io/badge/TypeScript-Expert-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
+![React](https://img.shields.io/badge/React-Specialist-61DAFB?style=for-the-badge&logo=react&logoColor=black)
+![Firebase](https://img.shields.io/badge/Firebase-Proficient-FFCA28?style=for-the-badge&logo=firebase&logoColor=black)
+![Node.js](https://img.shields.io/badge/Node.js-Advanced-339933?style=for-the-badge&logo=node.js&logoColor=white)
+
+</div>
+
+---
+
+## 🏆 Sobre o Projeto
+
+**GAV Protestos** foi desenvolvido do zero em **2 semanas** como solução profissional para gestão de incidentes em SimRacing. O sistema combina:
+
+- ⚡ **Performance** - React 18 + Vite para carregamento ultrarrápido
+- 🔒 **Segurança** - Steam OpenID elimina fraudes por design
+- 📱 **Mobile-First** - PWA com UX nativa em qualquer dispositivo
+- ☁️ **Serverless** - Firebase Cloud Functions + Firestore = Zero manutenção
+- 🎯 **UX Inteligente** - Two-Step Selection eliminou 90% dos erros de envio
 
 **Liga**: [Guerreiros do AV](https://www.instagram.com/guerreirosdoav/)
 
