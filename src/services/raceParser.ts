@@ -34,9 +34,9 @@ export const parseRaceJson = (jsonData: any): Race => {
 
     return {
         id: '', // To be assigned by Firestore
+        eventName: jsonData.EventName || '',
         trackName: jsonData.TrackName || 'Desconhecida',
         date: jsonData.Date || new Date().toISOString(),
-        serverName: jsonData.EventName || jsonData.ServerName || 'Servidor Desconhecido',
         drivers
     };
 };

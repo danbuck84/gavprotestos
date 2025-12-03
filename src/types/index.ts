@@ -12,9 +12,9 @@ export interface RaceDriver {
 
 export interface Race {
   id: string;
-  trackName: string;
+  eventName: string; // EventName do JSON (ex: "Etapa 5 - Áustria")
+  trackName: string; // TrackName do JSON (ex: "Red Bull Ring")
   date: string; // ISO string or timestamp
-  serverName: string;
   drivers: RaceDriver[];
 }
 

@@ -1,6 +1,11 @@
-import { useState, useEffect } from 'react';
-import { Container, Typography, Box, Button, Alert, CircularProgress, Paper, Chip, List, ListItem, ListItemText, IconButton, Divider } from '@mui/material';
+import { useState, useEffect, useMemo } from 'react';
+import {
+    Container, Typography, Box, Button, Alert, CircularProgress, Paper, Chip,
+    List, ListItem, ListItemText, IconButton, Divider, Tabs, Tab, TextField,
+    InputAdornment, Pagination
+} from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
+import SearchIcon from '@mui/icons-material/Search';
 import { parseRaceJson } from '../services/raceParser';
 import { collection, addDoc, query, where, getDocs, deleteDoc, doc, onSnapshot, orderBy, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -9,12 +14,19 @@ import NotificationBell from '../components/NotificationBell';
 import { formatDate } from '../utils/dateUtils';
 import { useNavigate } from 'react-router-dom';
 
+const ITEMS_PER_PAGE = 10;
+
 export default function AdminPainel() {
     const navigate = useNavigate();
     const [uploading, setUploading] = useState(false);
     const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
     const [races, setRaces] = useState<Race[]>([]);
     const [protests, setProtests] = useState<Protest[]>([]);
+
+    // New state for tabs, search and pagination
+    const [activeTab, setActiveTab] = useState<0 | 1>(0); // 0 = Em Andamento, 1 = Histórico
+    const [searchQuery, setSearchQuery] = useState('');
+    const [currentPage, setCurrentPage] = useState(1);
 
     useEffect(() => {
         const unsubscribeRaces = onSnapshot(collection(db, 'races'), (snapshot) => {
@@ -39,6 +51,90 @@ export default function AdminPainel() {
             unsubscribeProtests();
         };
     }, []);
+
+    // Helper: Check if race deadline is still open (< 24h from race date)
+    const isDeadlineOpen = (raceDate: string): boolean => {
+        const raceTime = new Date(raceDate).getTime();
+        const deadline = raceTime + (24 * 60 * 60 * 1000); // +24h
+        return Date.now() < deadline;
+    };
+
+    // Helper: Check if race is recent (within last 7 days)
+    const isRecentRace = (raceDate: string): boolean => {
+        const raceTime = new Date(raceDate).getTime();
+        const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000); // -7 days
+        return raceTime > sevenDaysAgo;
+    };
+
+    // Helper: Check if race is active (needs attention)
+    const isRaceActive = (race: Race, raceProtests: Protest[]): boolean => {
+        const isRecent = isRecentRace(race.date);
+        const hasActiveProtests = raceProtests.some(p =>
+            p.status === 'pending' || p.status === 'under_review'
+        );
+        return isRecent || hasActiveProtests;
+    };
+
+    // Filter races by search query
+    const filterBySearch = (race: Race): boolean => {
+        if (!searchQuery) return true;
+
+        const query = searchQuery.toLowerCase();
+        const eventMatch = race.eventName.toLowerCase().includes(query);
+        const trackMatch = race.trackName.toLowerCase().includes(query);
+        const dateMatch = formatDate(race.date).toLowerCase().includes(query);
+
+        return eventMatch || trackMatch || dateMatch;
+    };
+
+    // Separate races into active and historical
+    const { activeRaces, historicalRaces } = useMemo(() => {
+        const active: Race[] = [];
+        const historical: Race[] = [];
+
+        races.forEach(race => {
+            const raceProtests = protests.filter(p => p.raceId === race.id);
+            if (isRaceActive(race, raceProtests)) {
+                active.push(race);
+            } else {
+                historical.push(race);
+            }
+        });
+
+        // Sort both by most recent first
+        const sortByDate = (a: Race, b: Race) => new Date(b.date).getTime() - new Date(a.date).getTime();
+        active.sort(sortByDate);
+        historical.sort(sortByDate);
+
+        return { activeRaces: active, historicalRaces: historical };
+    }, [races, protests]);
+
+    // Get races to display based on active tab
+    const racesToDisplay = activeTab === 0 ? activeRaces : historicalRaces;
+
+    // Apply search filter
+    const filteredRaces = useMemo(() => {
+        return racesToDisplay.filter(filterBySearch);
+    }, [racesToDisplay, searchQuery]);
+
+    // Apply pagination (only for historical tab)
+    const { paginatedRaces, totalPages } = useMemo(() => {
+        if (activeTab === 0) {
+            // No pagination for "Em Andamento"
+            return { paginatedRaces: filteredRaces, totalPages: 1 };
+        }
+
+        const total = Math.ceil(filteredRaces.length / ITEMS_PER_PAGE);
+        const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+        const paginated = filteredRaces.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+
+        return { paginatedRaces: paginated, totalPages: total };
+    }, [filteredRaces, currentPage, activeTab]);
+
+    // Reset to page 1 when changing tabs or search query
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [activeTab, searchQuery]);
 
     const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
@@ -127,10 +223,18 @@ export default function AdminPainel() {
         }
     };
 
+    const handleTabChange = (_event: React.SyntheticEvent, newValue: 0 | 1) => {
+        setActiveTab(newValue);
+    };
 
+    const handlePageChange = (_event: React.ChangeEvent<unknown>, page: number) => {
+        setCurrentPage(page);
+        // Scroll to top when changing pages
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
 
     return (
-        <Container maxWidth="md" sx={{ mt: 4, mb: 8 }}>
+        <Container maxWidth="lg" sx={{ mt: 4, mb: 8 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                 <Button onClick={() => navigate('/')}>
                     &lt; Voltar
@@ -150,6 +254,7 @@ export default function AdminPainel() {
                 </Button>
             </Box>
 
+            {/* Import Section */}
             <Box sx={{ mt: 4, p: 3, border: '1px dashed grey', borderRadius: 2 }}>
                 <Typography variant="h6" gutterBottom>Importar Resultado de Corrida</Typography>
                 <Typography variant="body2" color="text.secondary" paragraph>
@@ -177,52 +282,73 @@ export default function AdminPainel() {
                 )}
             </Box>
 
+            {/* Race Management Section */}
             <Box sx={{ mt: 6 }}>
-                <Typography variant="h5" gutterBottom>Corridas Cadastradas</Typography>
-                {races.length === 0 ? (
-                    <Typography color="text.secondary">Nenhuma corrida cadastrada.</Typography>
-                ) : (
-                    <Paper elevation={2}>
-                        <List>
-                            {races.map((race, index) => (
-                                <div key={race.id}>
-                                    <ListItem
-                                        secondaryAction={
-                                            <IconButton edge="end" aria-label="delete" onClick={() => handleDeleteRace(race.id!)} color="error">
-                                                <DeleteIcon />
-                                            </IconButton>
-                                        }
-                                    >
-                                        <ListItemText
-                                            primary={race.trackName}
-                                            secondary={`${formatDate(race.date)} - ${race.drivers.length} pilotos`}
-                                        />
-                                    </ListItem>
-                                    {index < races.length - 1 && <Divider />}
-                                </div>
-                            ))}
-                        </List>
-                    </Paper>
-                )}
-            </Box>
+                <Typography variant="h5" gutterBottom>Gestão de Corridas</Typography>
 
-            <Box sx={{ mt: 6 }}>
-                <Typography variant="h5" gutterBottom>Corridas Recentes</Typography>
-                <Typography variant="body2" color="text.secondary" paragraph>
-                    Clique em uma corrida para ver os protestos dessa etapa.
-                </Typography>
-                {races.length === 0 ? (
-                    <Typography color="text.secondary">Nenhuma corrida cadastrada.</Typography>
+                {/* Tabs */}
+                <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
+                    <Tabs value={activeTab} onChange={handleTabChange}>
+                        <Tab
+                            label={`Ativas (${activeRaces.length})`}
+                            sx={{ fontWeight: activeTab === 0 ? 'bold' : 'normal' }}
+                        />
+                        <Tab
+                            label={`Histórico (${historicalRaces.length})`}
+                            sx={{ fontWeight: activeTab === 1 ? 'bold' : 'normal' }}
+                        />
+                    </Tabs>
+                </Box>
+
+                {/* Search Bar */}
+                <TextField
+                    fullWidth
+                    placeholder="Buscar por Etapa, Pista ou Data..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    sx={{ mb: 3 }}
+                    InputProps={{
+                        startAdornment: (
+                            <InputAdornment position="start">
+                                <SearchIcon />
+                            </InputAdornment>
+                        ),
+                    }}
+                />
+
+                {/* Race Cards Grid */}
+                {filteredRaces.length === 0 ? (
+                    <Paper sx={{ p: 4, textAlign: 'center' }}>
+                        <Typography color="text.secondary">
+                            {searchQuery
+                                ? 'Nenhuma corrida encontrada com os critérios de busca.'
+                                : activeTab === 0
+                                    ? 'Nenhuma corrida em andamento no momento.'
+                                    : 'Nenhuma corrida no histórico.'}
+                        </Typography>
+                    </Paper>
                 ) : (
-                    <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' }, gap: 2 }}>
-                        {races
-                            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-                            .map((race) => {
+                    <>
+                        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' }, gap: 2 }}>
+                            {paginatedRaces.map((race) => {
                                 const raceProtests = protests.filter(p => p.raceId === race.id);
                                 const pendingCount = raceProtests.filter(p => p.status === 'pending').length;
                                 const reviewCount = raceProtests.filter(p => p.status === 'under_review').length;
                                 const concludedCount = raceProtests.filter(p => p.status === 'concluded').length;
                                 const totalCount = raceProtests.length;
+                                const deadlineOpen = isDeadlineOpen(race.date);
+
+                                // Card title logic: prioritize eventName
+                                const cardTitle = race.eventName || race.trackName;
+                                const cardSubtitle = race.eventName
+                                    ? `${race.trackName} • ${formatDate(race.date)}`
+                                    : formatDate(race.date);
+
+                                // Check if race is completed
+                                const allProtestsConcluded = totalCount > 0 &&
+                                    raceProtests.every(p => p.status === 'concluded');
+                                const isOldRace = !deadlineOpen;
+                                const isCompleted = allProtestsConcluded && isOldRace;
 
                                 return (
                                     <Paper
@@ -232,6 +358,8 @@ export default function AdminPainel() {
                                             p: 3,
                                             cursor: 'pointer',
                                             transition: 'all 0.2s',
+                                            border: deadlineOpen ? '2px solid' : 'none',
+                                            borderColor: deadlineOpen ? 'warning.main' : 'transparent',
                                             '&:hover': {
                                                 elevation: 6,
                                                 transform: 'translateY(-2px)',
@@ -241,55 +369,117 @@ export default function AdminPainel() {
                                         onClick={() => navigate(`/admin/corrida/${race.id}`)}
                                     >
                                         <Typography variant="h6" fontWeight="bold" gutterBottom>
-                                            {race.trackName}
+                                            {cardTitle}
                                         </Typography>
                                         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                                            {formatDate(race.date)}
+                                            {cardSubtitle}
                                         </Typography>
 
-                                        {totalCount > 0 ? (
-                                            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 1 }}>
-                                                {pendingCount > 0 && (
-                                                    <Chip
-                                                        label={`${pendingCount} Pendente${pendingCount > 1 ? 's' : ''}`}
-                                                        color="warning"
-                                                        size="small"
-                                                        variant="filled"
-                                                    />
-                                                )}
-                                                {reviewCount > 0 && (
-                                                    <Chip
-                                                        label={`${reviewCount} Em Análise`}
-                                                        color="info"
-                                                        size="small"
-                                                        variant="filled"
-                                                    />
-                                                )}
-                                                {concludedCount > 0 && (
-                                                    <Chip
-                                                        label={`${concludedCount} Concluído${concludedCount > 1 ? 's' : ''}`}
-                                                        color="success"
-                                                        size="small"
-                                                        variant="filled"
-                                                    />
-                                                )}
-                                            </Box>
-                                        ) : (
-                                            <Chip
-                                                label="Sem protestos"
-                                                color="default"
-                                                size="small"
-                                                variant="outlined"
-                                            />
-                                        )}
+                                        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 1 }}>
+                                            {deadlineOpen && (
+                                                <Chip
+                                                    label="Prazo Aberto"
+                                                    color="info"
+                                                    size="small"
+                                                    variant="outlined"
+                                                />
+                                            )}
+                                            {pendingCount > 0 && (
+                                                <Chip
+                                                    label={`${pendingCount} Pendente${pendingCount > 1 ? 's' : ''}`}
+                                                    color="warning"
+                                                    size="small"
+                                                    variant="filled"
+                                                />
+                                            )}
+                                            {reviewCount > 0 && (
+                                                <Chip
+                                                    label={`${reviewCount} Em Votação`}
+                                                    color="info"
+                                                    size="small"
+                                                    variant="filled"
+                                                />
+                                            )}
+                                            {concludedCount > 0 && (
+                                                <Chip
+                                                    label={`${concludedCount} Concluído${concludedCount > 1 ? 's' : ''}`}
+                                                    color="success"
+                                                    size="small"
+                                                    variant="filled"
+                                                />
+                                            )}
+                                            {isCompleted && (
+                                                <Chip
+                                                    label="Concluída"
+                                                    color="success"
+                                                    size="small"
+                                                    variant="outlined"
+                                                />
+                                            )}
+                                            {totalCount === 0 && !deadlineOpen && (
+                                                <Chip
+                                                    label="Sem protestos"
+                                                    color="default"
+                                                    size="small"
+                                                    variant="outlined"
+                                                />
+                                            )}
+                                        </Box>
 
                                         <Typography variant="caption" display="block" color="text.secondary" sx={{ mt: 1 }}>
-                                            {race.drivers.length} pilotos • {totalCount} protesto{totalCount !== 1 ? 's' : ''}
+                                            👥 {race.drivers.length} pilotos • {totalCount} protesto{totalCount !== 1 ? 's' : ''}
                                         </Typography>
                                     </Paper>
                                 );
                             })}
-                    </Box>
+                        </Box>
+
+                        {/* Pagination (only for Historical tab) */}
+                        {activeTab === 1 && totalPages > 1 && (
+                            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
+                                <Pagination
+                                    count={totalPages}
+                                    page={currentPage}
+                                    onChange={handlePageChange}
+                                    color="primary"
+                                    showFirstButton
+                                    showLastButton
+                                />
+                            </Box>
+                        )}
+                    </>
+                )}
+            </Box>
+
+            {/* Delete Management Section (collapsed list) */}
+            <Box sx={{ mt: 6 }}>
+                <Typography variant="h6" gutterBottom>Gerenciamento Rápido</Typography>
+                {races.length === 0 ? (
+                    <Typography color="text.secondary">Nenhuma corrida cadastrada.</Typography>
+                ) : (
+                    <Paper elevation={2}>
+                        <List sx={{ maxHeight: 300, overflow: 'auto' }}>
+                            {races
+                                .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                                .map((race, index) => (
+                                    <div key={race.id}>
+                                        <ListItem
+                                            secondaryAction={
+                                                <IconButton edge="end" aria-label="delete" onClick={() => handleDeleteRace(race.id!)} color="error">
+                                                    <DeleteIcon />
+                                                </IconButton>
+                                            }
+                                        >
+                                            <ListItemText
+                                                primary={race.trackName}
+                                                secondary={`${formatDate(race.date)} - ${race.drivers.length} pilotos`}
+                                            />
+                                        </ListItem>
+                                        {index < races.length - 1 && <Divider />}
+                                    </div>
+                                ))}
+                        </List>
+                    </Paper>
                 )}
             </Box>
         </Container>
