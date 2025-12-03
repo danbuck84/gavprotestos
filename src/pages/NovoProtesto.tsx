@@ -28,6 +28,7 @@ export default function NovoProtesto() {
 
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
+    const [hasAvailableRaces, setHasAvailableRaces] = useState(true);
     const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' | 'warning' }>({
         open: false,
         message: '',
@@ -42,9 +43,19 @@ export default function NovoProtesto() {
                     const data = doc.data();
                     return { ...data, id: doc.id } as Race;
                 });
+
+                // Filter: only races within protest window (24h)
+                const now = Date.now();
+                const twentyFourHours = 24 * 60 * 60 * 1000;
+                const activeRaces = racesData.filter(race => {
+                    const raceTime = new Date(race.date).getTime();
+                    return now <= (raceTime + twentyFourHours);
+                });
+
                 // Sort by date desc
-                racesData.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-                setRaces(racesData);
+                activeRaces.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+                setRaces(activeRaces);
+                setHasAvailableRaces(activeRaces.length > 0);
             } catch (error) {
                 console.error("Error fetching races", error);
                 setSnackbar({ open: true, message: "Erro ao carregar corridas.", severity: 'error' });
@@ -77,6 +88,19 @@ export default function NovoProtesto() {
         });
         return `[${typeLabel}] ${eventName} - ${dateStr}`;
     };
+
+    // Incident types - SimRacing Industry Standard
+    const incidentTypes = [
+        'Colisão Evitável (Causing a Collision)',
+        'Retorno Perigoso (Unsafe Rejoin)',
+        'Mudança de Direção Indevida / Bloqueio (Blocking)',
+        'Ignorar Bandeira Azul (Ignoring Blue Flag)',
+        'Forçar Ultrapassagem (Dive Bomb)',
+        'Colisão Intencional (Intentional Wrecking)',
+        'Desrespeito aos Limites de Pista (Track Limits)',
+        'Conduta Antidesportiva (Unsportsmanlike Conduct)',
+        'Outros'
+    ];
 
     useEffect(() => {
         if (selectedRaceId) {
@@ -229,6 +253,12 @@ export default function NovoProtesto() {
             </Button>
             <Typography variant="h4" gutterBottom>Novo Protesto</Typography>
 
+            {!hasAvailableRaces && (
+                <Alert severity="info" sx={{ mb: 3 }}>
+                    Nenhum evento aceitando protestos no momento. O prazo de protesto é de 24 horas após a corrida.
+                </Alert>
+            )}
+
             {isDeadlineExpired && (
                 <Alert severity="error" sx={{ mb: 3 }}>
                     O prazo de 24 horas para protestos desta corrida já encerrou.
@@ -236,7 +266,7 @@ export default function NovoProtesto() {
             )}
 
             <form onSubmit={handleSubmit}>
-                <FormControl fullWidth margin="normal">
+                <FormControl fullWidth margin="normal" disabled={!hasAvailableRaces}>
                     <InputLabel>Sessão / Corrida</InputLabel>
                     <Select
                         value={selectedRaceId}
@@ -252,7 +282,7 @@ export default function NovoProtesto() {
                     </Select>
                 </FormControl>
 
-                <FormControl fullWidth margin="normal" disabled={!selectedRaceId}>
+                <FormControl fullWidth margin="normal" disabled={!selectedRaceId || !hasAvailableRaces}>
                     <InputLabel>Piloto Acusado</InputLabel>
                     <Select
                         value={accusedId}
@@ -333,7 +363,7 @@ export default function NovoProtesto() {
                     )}
                 </Box>
 
-                <FormControl fullWidth margin="normal">
+                <FormControl fullWidth margin="normal" disabled={!hasAvailableRaces}>
                     <InputLabel>Tipo de Incidente</InputLabel>
                     <Select
                         value={incidentType}
@@ -341,10 +371,11 @@ export default function NovoProtesto() {
                         onChange={(e) => setIncidentType(e.target.value)}
                         required
                     >
-                        <MenuItem value="Colisão">Colisão</MenuItem>
-                        <MenuItem value="Bloqueio">Bloqueio</MenuItem>
-                        <MenuItem value="Retorno Inseguro">Retorno Inseguro</MenuItem>
-                        <MenuItem value="Outro">Outro</MenuItem>
+                        {incidentTypes.map((type) => (
+                            <MenuItem key={type} value={type}>
+                                {type}
+                            </MenuItem>
+                        ))}
                     </Select>
                 </FormControl>
 
@@ -357,6 +388,8 @@ export default function NovoProtesto() {
                     required
                     fullWidth
                     margin="normal"
+                    helperText="Descreva o que aconteceu com o máximo de detalhes possível."
+                    disabled={!hasAvailableRaces}
                 />
 
                 <Button
