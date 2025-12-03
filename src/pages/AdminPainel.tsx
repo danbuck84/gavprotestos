@@ -1,18 +1,19 @@
 import { useState, useEffect, useMemo } from 'react';
 import {
-    Container, Typography, Box, Button, Alert, CircularProgress, Paper, Chip,
-    List, ListItem, ListItemText, IconButton, Divider, Tabs, Tab, TextField,
-    InputAdornment, Pagination
+    Container, Typography, Box, Paper, TextField, Button, Alert,
+    Tabs, Tab, Pagination, Chip, CircularProgress, InputAdornment, List, ListItem, ListItemText, Divider, IconButton
 } from '@mui/material';
-import DeleteIcon from '@mui/icons-material/Delete';
 import SearchIcon from '@mui/icons-material/Search';
+import DeleteIcon from '@mui/icons-material/Delete';
 import { parseRaceJson } from '../services/raceParser';
-import { collection, addDoc, query, where, getDocs, deleteDoc, doc, onSnapshot, orderBy, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import {
+    collection, query, orderBy, onSnapshot, doc, getDoc, setDoc, updateDoc, deleteDoc, serverTimestamp
+} from 'firebase/firestore';
 import { db } from '../firebase';
 import type { Race, Protest } from '../types';
-import NotificationBell from '../components/NotificationBell';
 import { formatDate } from '../utils/dateUtils';
 import { useNavigate } from 'react-router-dom';
+import NotificationBell from '../components/NotificationBell';
 
 const ITEMS_PER_PAGE = 10;
 
@@ -163,44 +164,47 @@ export default function AdminPainel() {
                 const jsonContent = JSON.parse(e.target?.result as string);
                 const raceData = parseRaceJson(jsonContent);
 
-                // Check for duplicates
-                const q = query(
-                    collection(db, 'races'),
-                    where('trackName', '==', raceData.trackName),
-                    where('date', '==', raceData.date)
-                );
-                const querySnapshot = await getDocs(q);
+                // Generate deterministic ID: timestamp_track_type
+                const raceTimestamp = new Date(raceData.date).getTime();
+                const trackSlug = raceData.trackName.toLowerCase().replace(/\s+/g, '_');
+                const typeSlug = (raceData.type || 'race').toLowerCase();
+                const deterministicId = `${raceTimestamp}_${trackSlug}_${typeSlug}`;
 
-                if (!querySnapshot.empty) {
+                // Check if this exact session already exists
+                const existingDoc = await getDoc(doc(db, 'races', deterministicId));
+                if (existingDoc.exists()) {
                     setMessage({
                         type: 'error',
-                        text: `Erro: A corrida "${raceData.trackName}" de ${formatDate(raceData.date)} já foi importada.`
+                        text: `Sessão já importada. Esta corrida já existe no sistema.`
                     });
+                    setUploading(false);
                     return;
                 }
 
-                // Save race to Firestore
-                const docRef = await addDoc(collection(db, 'races'), raceData);
+                // Save with deterministic ID
+                await setDoc(doc(db, 'races', deterministicId), {
+                    ...raceData,
+                    uploadedAt: serverTimestamp()
+                });
 
-                // UPSERT: Update or Insert drivers to prevent duplicates
-                let driversUpdated = 0;
+                // Process drivers (create/update users)
                 let driversCreated = 0;
-
+                let driversUpdated = 0;
                 for (const driver of raceData.drivers) {
-                    if (!driver.steamId) continue;
-
-                    // Use steamId as Document ID to ensure physical uniqueness
                     const userDocRef = doc(db, 'users', driver.steamId);
-                    const userSnapshot = await getDoc(userDocRef);
+                    const userDoc = await getDoc(userDocRef);
 
-                    if (userSnapshot.exists()) {
-                        // User exists - update displayName only
-                        await updateDoc(userDocRef, {
-                            displayName: driver.name
-                        });
-                        driversUpdated++;
+                    if (userDoc.exists()) {
+                        // Update if name changed
+                        const existingData = userDoc.data();
+                        if (existingData.displayName !== driver.name) {
+                            await updateDoc(userDocRef, {
+                                displayName: driver.name
+                            });
+                            driversUpdated++;
+                        }
                     } else {
-                        // User does not exist - create new with steamId as Document ID
+                        // Create new user
                         await setDoc(userDocRef, {
                             steamId64: driver.steamId,
                             displayName: driver.name,
@@ -213,7 +217,7 @@ export default function AdminPainel() {
 
                 setMessage({
                     type: 'success',
-                    text: `Corrida "${raceData.trackName}" importada com sucesso! ID: ${docRef.id} com ${raceData.drivers.length} pilotos (${driversCreated} novos, ${driversUpdated} atualizados).`
+                    text: `Corrida "${raceData.eventName || raceData.trackName}" importada com sucesso! ID: ${deterministicId} com ${raceData.drivers.length} pilotos (${driversCreated} novos, ${driversUpdated} atualizados).`
                 });
             } catch (error) {
                 console.error("Erro ao importar:", error);

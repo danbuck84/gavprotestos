@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
     Container, Typography, TextField, Button, MenuItem,
     Select, FormControl, InputLabel, Box, CircularProgress, Snackbar, Alert, LinearProgress, Chip, Stack
@@ -12,6 +12,7 @@ import { useNavigate } from 'react-router-dom';
 export default function NovoProtesto() {
     const navigate = useNavigate();
     const [races, setRaces] = useState<Race[]>([]);
+    const [selectedEventName, setSelectedEventName] = useState('');
     const [selectedRaceId, setSelectedRaceId] = useState('');
     const [drivers, setDrivers] = useState<RaceDriver[]>([]);
 
@@ -66,41 +67,44 @@ export default function NovoProtesto() {
         fetchRaces();
     }, []);
 
-    // Helper: Format session type label
-    const getSessionTypeLabel = (type: string): string => {
+    // Helper: Format session type label with fallback
+    const getSessionTypeLabel = (type: string | undefined): string => {
+        if (!type) return 'SESSÃO';
         switch (type) {
             case 'RACE': return 'CORRIDA';
-            case 'QUALIFY': return 'QUALIFY';
+            case 'QUALIFY': return 'CLASSIFICAÇÃO';
             case 'PRACTICE': return 'TREINO';
-            default: return type;
+            default: return 'SESSÃO';
         }
     };
 
-    // Helper: Format race label for dropdown
-    const formatRaceLabel = (race: Race): string => {
-        const typeLabel = getSessionTypeLabel(race.type);
-        const eventName = race.eventName || race.trackName;
-        const dateStr = new Date(race.date).toLocaleString('pt-BR', {
-            day: '2-digit',
-            month: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
-        return `[${typeLabel}] ${eventName} - ${dateStr}`;
-    };
-
-    // Incident types - SimRacing Industry Standard
+    // Incident types - PT-BR Only
     const incidentTypes = [
-        'Colisão Evitável (Causing a Collision)',
-        'Retorno Perigoso (Unsafe Rejoin)',
-        'Mudança de Direção Indevida / Bloqueio (Blocking)',
-        'Ignorar Bandeira Azul (Ignoring Blue Flag)',
-        'Forçar Ultrapassagem (Dive Bomb)',
-        'Colisão Intencional (Intentional Wrecking)',
-        'Desrespeito aos Limites de Pista (Track Limits)',
-        'Conduta Antidesportiva (Unsportsmanlike Conduct)',
+        'Colisão Evitável',
+        'Retorno Perigoso à Pista',
+        'Mudança de Direção Indevida / Bloqueio',
+        'Ignorar Bandeira Azul',
+        'Forçar Ultrapassagem (Mergulho)',
+        'Colisão Intencional',
+        'Desrespeito aos Limites de Pista',
+        'Conduta Antidesportiva',
         'Outros'
     ];
+
+    // Group races by event name
+    const eventGroups = useMemo(() => {
+        const groups = new Map<string, Race[]>();
+        races.forEach(race => {
+            const eventKey = race.eventName || race.trackName;
+            if (!groups.has(eventKey)) {
+                groups.set(eventKey, []);
+            }
+            groups.get(eventKey)!.push(race);
+        });
+        return groups;
+    }, [races]);
+
+    const uniqueEvents = Array.from(eventGroups.keys());
 
     useEffect(() => {
         if (selectedRaceId) {
@@ -266,21 +270,55 @@ export default function NovoProtesto() {
             )}
 
             <form onSubmit={handleSubmit}>
+                {/* Passo A - Select de Evento */}
                 <FormControl fullWidth margin="normal" disabled={!hasAvailableRaces}>
-                    <InputLabel>Sessão / Corrida</InputLabel>
+                    <InputLabel>Etapa / Evento</InputLabel>
                     <Select
-                        value={selectedRaceId}
-                        label="Sessão / Corrida"
-                        onChange={(e) => setSelectedRaceId(e.target.value)}
+                        value={selectedEventName}
+                        label="Etapa / Evento"
+                        onChange={(e) => {
+                            setSelectedEventName(e.target.value);
+                            setSelectedRaceId(''); // Reset sessão quando muda evento
+                            setDrivers([]); // Reset pilotos
+                        }}
                         required
+                        sx={{ '& .MuiSelect-select': { textOverflow: 'ellipsis' } }}
                     >
-                        {races.map((race) => (
-                            <MenuItem key={race.id} value={race.id}>
-                                {formatRaceLabel(race)}
+                        {uniqueEvents.map(eventName => (
+                            <MenuItem key={eventName} value={eventName}>
+                                {eventName}
                             </MenuItem>
                         ))}
                     </Select>
                 </FormControl>
+
+                {/* Passo B - Select de Sessão (condicional) */}
+                {selectedEventName && (
+                    <FormControl fullWidth margin="normal" disabled={!hasAvailableRaces}>
+                        <InputLabel>Sessão</InputLabel>
+                        <Select
+                            value={selectedRaceId}
+                            label="Sessão"
+                            onChange={(e) => setSelectedRaceId(e.target.value)}
+                            required
+                            sx={{ '& .MuiSelect-select': { textOverflow: 'ellipsis' } }}
+                        >
+                            {eventGroups.get(selectedEventName)?.map(race => {
+                                const typeLabel = getSessionTypeLabel(race.type);
+                                const timeStr = new Date(race.date).toLocaleString('pt-BR', {
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                });
+                                return (
+                                    <MenuItem key={race.id} value={race.id}>
+                                        [{typeLabel}] - {timeStr}
+                                    </MenuItem>
+                                );
+                            })}
+                        </Select>
+                    </FormControl>
+                )}
+
 
                 <FormControl fullWidth margin="normal" disabled={!selectedRaceId || !hasAvailableRaces}>
                     <InputLabel>Piloto Acusado</InputLabel>
