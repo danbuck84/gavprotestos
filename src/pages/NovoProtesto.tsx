@@ -17,7 +17,6 @@ export default function NovoProtesto() {
     const [drivers, setDrivers] = useState<RaceDriver[]>([]);
 
     const [accusedId, setAccusedId] = useState('');
-    const [lap, setLap] = useState('');
     const [positionsLost, setPositionsLost] = useState('');
     const [incidentType, setIncidentType] = useState('');
     const [description, setDescription] = useState('');
@@ -84,7 +83,7 @@ export default function NovoProtesto() {
         'Retorno Perigoso à Pista',
         'Mudança de Direção Indevida / Bloqueio',
         'Ignorar Bandeira Azul',
-        'Forçar Ultrapassagem (Mergulho)',
+        'Divebomb',
         'Colisão Intencional',
         'Desrespeito aos Limites de Pista',
         'Conduta Antidesportiva',
@@ -220,7 +219,6 @@ export default function NovoProtesto() {
                 raceId: selectedRaceId,
                 accuserId: currentUserSteamId,
                 accusedId,
-                lap: Number(lap),
                 positionsLost: Number(positionsLost),
                 videoUrls: uploadedUrls,
                 incidentType,
@@ -303,18 +301,46 @@ export default function NovoProtesto() {
                             required
                             sx={{ '& .MuiSelect-select': { textOverflow: 'ellipsis' } }}
                         >
-                            {eventGroups.get(selectedEventName)?.map(race => {
-                                const typeLabel = getSessionTypeLabel(race.type);
-                                const timeStr = new Date(race.date).toLocaleString('pt-BR', {
-                                    hour: '2-digit',
-                                    minute: '2-digit'
+                            {(() => {
+                                const sessions = eventGroups.get(selectedEventName) || [];
+
+                                // Separar por tipo
+                                const races = sessions.filter(s => s.type === 'RACE')
+                                    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+                                const nonRaces = sessions.filter(s => s.type !== 'RACE');
+
+                                // Renderizar não-races (QUALIFY, PRACTICE)
+                                const nonRaceItems = nonRaces.map(race => {
+                                    const typeLabel = getSessionTypeLabel(race.type);
+                                    const timeStr = new Date(race.date).toLocaleString('pt-BR', {
+                                        hour: '2-digit',
+                                        minute: '2-digit'
+                                    });
+                                    return (
+                                        <MenuItem key={race.id} value={race.id}>
+                                            [{typeLabel}] - {timeStr}
+                                        </MenuItem>
+                                    );
                                 });
-                                return (
-                                    <MenuItem key={race.id} value={race.id}>
-                                        [{typeLabel}] - {timeStr}
-                                    </MenuItem>
-                                );
-                            })}
+
+                                // Renderizar races com nomenclatura dinâmica de baterias
+                                const raceItems = races.map((race, index) => {
+                                    const timeStr = new Date(race.date).toLocaleString('pt-BR', {
+                                        hour: '2-digit',
+                                        minute: '2-digit'
+                                    });
+                                    const label = races.length === 1
+                                        ? `BATERIA ÚNICA - ${timeStr}`
+                                        : `BATERIA ${index + 1} - ${timeStr}`;
+                                    return (
+                                        <MenuItem key={race.id} value={race.id}>
+                                            {label}
+                                        </MenuItem>
+                                    );
+                                });
+
+                                return [...nonRaceItems, ...raceItems];
+                            })()}
                         </Select>
                     </FormControl>
                 )}
@@ -335,16 +361,6 @@ export default function NovoProtesto() {
                         ))}
                     </Select>
                 </FormControl>
-
-                <TextField
-                    label="Volta"
-                    type="number"
-                    value={lap}
-                    onChange={(e) => setLap(e.target.value)}
-                    required
-                    fullWidth
-                    margin="normal"
-                />
 
                 <TextField
                     label="Posições Perdidas"
