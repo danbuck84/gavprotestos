@@ -8,15 +8,18 @@ import { collection, query, where, getDocs } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
 import { db, auth } from '../firebase';
 import LogoutIcon from '@mui/icons-material/Logout';
-import type { Protest } from '../types';
+import type { Protest, Race } from '../types';
 import UserName from '../components/UserName';
 import { translateStatus } from '../utils/translations';
 import { formatDateOnly } from '../utils/dateUtils';
+import { getInitials } from '../utils/stringUtils';
 
 export default function DriverProfile() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const [loading, setLoading] = useState(true);
+    const [userName, setUserName] = useState<string>(''); // BUG FIX 1: Para o avatar com iniciais
+    const [racesMap, setRacesMap] = useState<Map<string, Race>>(new Map()); // BUG FIX 3: Para nomes de corrida
     const [stats, setStats] = useState({
         protestsInvolved: 0,
         penalties: 0,
@@ -33,6 +36,31 @@ export default function DriverProfile() {
                 const cleanId = id.startsWith('steam:') ? id.replace('steam:', '') : id;
 
                 console.log('🔍 DriverProfile - Fetching protests for ID:', id, '→ Clean ID:', cleanId);
+
+                // BUG FIX 3: Fetch all races to build a map
+                const racesSnap = await getDocs(collection(db, 'races'));
+                const racesData = new Map<string, Race>();
+                racesSnap.docs.forEach(doc => {
+                    racesData.set(doc.id, { id: doc.id, ...doc.data() } as Race);
+                });
+                setRacesMap(racesData);
+                console.log('🏁 Loaded races map:', racesData.size);
+
+                // BUG FIX 1: Search for user name in races drivers
+                let foundUserName = 'Piloto';
+                for (const [, race] of racesData) {
+                    if (race.drivers && Array.isArray(race.drivers)) {
+                        const driver = race.drivers.find(d =>
+                            d.steamId === cleanId || d.steamId === id || d.steamId === `steam:${cleanId}`
+                        );
+                        if (driver && driver.name) {
+                            foundUserName = driver.name;
+                            break;
+                        }
+                    }
+                }
+                setUserName(foundUserName);
+                console.log('👤 Found user name:', foundUserName);
 
                 // Fetch Protests where user is accused (NO orderBy to avoid index requirement)
                 const qAccused = query(
@@ -71,7 +99,7 @@ export default function DriverProfile() {
                     p?.status === 'accepted' || (p?.status === 'concluded' && p?.verdict === 'Punido')
                 ).length;
 
-                console.log('\ud83d\udcca Stats calculation:', {
+                console.log('📊 Stats calculation:', {
                     protestsInvolved: uniqueProtests.length,
                     penalties: penaltiesCount,
                     accusedProtestsCount: accusedProtests.length,
@@ -104,16 +132,27 @@ export default function DriverProfile() {
         <Container maxWidth="md" sx={{ mt: 4, mb: 8 }}>
             {/* Header */}
             <Paper elevation={3} sx={{ p: 4, mb: 4, display: 'flex', alignItems: 'center', gap: 3 }}>
-                <Avatar sx={{ width: 80, height: 80, bgcolor: 'primary.main', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Typography variant="h4" sx={{ fontWeight: 'bold' }}>
-                        <UserName uid={id} variant="h6" />
-                    </Typography>
+                {/* BUG FIX 1: Avatar com iniciais */}
+                <Avatar sx={{ width: 80, height: 80, bgcolor: 'primary.main', fontSize: '2rem', fontWeight: 'bold' }}>
+                    {getInitials(userName)}
                 </Avatar>
-                <Box>
+                <Box sx={{ flex: 1, minWidth: 0 }}>
                     <Typography variant="h4">
                         <UserName uid={id} variant="h6" />
                     </Typography>
-                    <Typography variant="subtitle1" color="text.secondary">ID: {id}</Typography>
+                    {/* BUG FIX 2: SteamID com truncação */}
+                    <Typography
+                        variant="subtitle1"
+                        color="text.secondary"
+                        sx={{
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                            maxWidth: '100%'
+                        }}
+                    >
+                        ID: {id}
+                    </Typography>
                 </Box>
             </Paper>
 
@@ -140,38 +179,51 @@ export default function DriverProfile() {
             ) : (
                 <Paper elevation={2}>
                     <List>
-                        {history.map((protest, index) => (
-                            <Box key={protest.id}>
-                                <ListItem disablePadding>
-                                    <ListItemButton onClick={() => navigate(`/admin/julgamento/${protest.id}`)}>
-                                        <ListItemText
-                                            primary={
-                                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                    <Typography variant="subtitle1" fontWeight="bold">
-                                                        {protest.accuserId === id ? 'Autor' : 'Acusado'} em {protest.raceId}
-                                                    </Typography>
-                                                    <Chip
-                                                        label={protest?.status === 'concluded' ? (protest?.verdict || 'Concluído') : translateStatus(protest?.status || '')}
-                                                        color={protest?.status === 'concluded' && protest?.verdict === 'Punido' ? 'error' : 'default'}
-                                                        size="small"
-                                                    />
-                                                </Box>
-                                            }
-                                            secondary={
-                                                <>
-                                                    <Typography component="span" variant="body2" color="text.primary">
-                                                        Contra: <UserName uid={protest.accuserId === id ? protest.accusedId : protest.accuserId} />
-                                                    </Typography>
-                                                    <br />
-                                                    {formatDateOnly(protest.createdAt)} - {protest?.description?.substring(0, 100) || 'Sem descrição'}...
-                                                </>
-                                            }
-                                        />
-                                    </ListItemButton>
-                                </ListItem>
-                                {index < history.length - 1 && <Divider />}
-                            </Box>
-                        ))}
+                        {history.map((protest, index) => {
+                            // BUG FIX 3: Buscar nome da corrida
+                            const race = racesMap.get(protest.raceId);
+                            const raceName = race?.eventName || 'Evento Desconhecido';
+
+                            // BUG FIX 4: Lógica correta de "Contra Quem"
+                            const cleanId = id?.startsWith('steam:') ? id.replace('steam:', '') : id;
+                            const isAccuser = protest.accuserId === cleanId;
+                            const opponentId = isAccuser ? protest.accusedId : protest.accuserId;
+                            const opponentLabel = isAccuser ? 'Contra' : 'Por';
+                            const roleLabel = isAccuser ? 'Autor' : 'Acusado';
+
+                            return (
+                                <Box key={protest.id}>
+                                    <ListItem disablePadding>
+                                        <ListItemButton onClick={() => navigate(`/admin/julgamento/${protest.id}`)}>
+                                            <ListItemText
+                                                primary={
+                                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
+                                                        <Typography variant="subtitle1" fontWeight="bold">
+                                                            {roleLabel} em {raceName}
+                                                        </Typography>
+                                                        <Chip
+                                                            label={protest?.status === 'concluded' ? (protest?.verdict || 'Concluído') : translateStatus(protest?.status || '')}
+                                                            color={protest?.status === 'concluded' && protest?.verdict === 'Punido' ? 'error' : 'default'}
+                                                            size="small"
+                                                        />
+                                                    </Box>
+                                                }
+                                                secondary={
+                                                    <>
+                                                        <Typography component="span" variant="body2" color="text.primary">
+                                                            {opponentLabel}: <UserName uid={opponentId} />
+                                                        </Typography>
+                                                        <br />
+                                                        {formatDateOnly(protest.createdAt)} - {protest?.description?.substring(0, 100) || 'Sem descrição'}...
+                                                    </>
+                                                }
+                                            />
+                                        </ListItemButton>
+                                    </ListItem>
+                                    {index < history.length - 1 && <Divider />}
+                                </Box>
+                            );
+                        })}
                     </List>
                 </Paper>
             )}
