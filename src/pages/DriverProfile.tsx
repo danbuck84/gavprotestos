@@ -12,7 +12,7 @@ import type { Protest, Race } from '../types';
 import UserName from '../components/UserName';
 import { translateStatus } from '../utils/translations';
 import { formatDateOnly } from '../utils/dateUtils';
-import { getInitials } from '../utils/stringUtils';
+import { getInitials, formatSteamId } from '../utils/stringUtils';
 
 export default function DriverProfile() {
     const { id } = useParams<{ id: string }>();
@@ -140,7 +140,7 @@ export default function DriverProfile() {
                     <Typography variant="h4">
                         <UserName uid={id} variant="h6" />
                     </Typography>
-                    {/* BUG FIX 2: SteamID com truncação */}
+                    {/* BUG FIX 2: SteamID com truncação + TAREFA 1: Máscara de privacidade */}
                     <Typography
                         variant="subtitle1"
                         color="text.secondary"
@@ -151,7 +151,7 @@ export default function DriverProfile() {
                             maxWidth: '100%'
                         }}
                     >
-                        ID: {id}
+                        ID: {formatSteamId(id)}
                     </Typography>
                 </Box>
             </Paper>

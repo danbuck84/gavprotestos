@@ -49,6 +49,22 @@ service cloud.firestore {
       }
     }
 
+    // Feedback: Auth can create their own, Admins can read/update
+    match /feedback/{feedbackId} {
+      // Usuários autenticados podem criar feedback
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      
+      // Usuários podem ler seus próprios feedbacks + Admins podem ler todos
+      allow read: if isAuthenticated() && 
+                     (resource.data.userId == request.auth.uid || isAdmin());
+      
+      // Apenas admins podem atualizar (marcar como lido)
+      allow update: if isAdmin();
+      
+      // Apenas super-admins podem deletar
+      allow delete: if isSuperAdmin();
+    }
+
     // Races: Auth can read, Admin can write
     match /races/{raceId} {
       allow read: if isAuthenticated();

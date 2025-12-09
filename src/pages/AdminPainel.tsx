@@ -1,16 +1,18 @@
 import { useState, useEffect, useMemo } from 'react';
 import {
     Container, Typography, Box, Paper, TextField, Button, Alert,
-    Tabs, Tab, Pagination, Chip, CircularProgress, InputAdornment, List, ListItem, ListItemText, Divider, IconButton
+    Tabs, Tab, Pagination, Chip, CircularProgress, InputAdornment, List, ListItem, ListItemText, Divider, IconButton, Card, CardContent, CardActions
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import DeleteIcon from '@mui/icons-material/Delete';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import AttachFileIcon from '@mui/icons-material/AttachFile';
 import { parseRaceJson } from '../services/raceParser';
 import {
     collection, query, orderBy, onSnapshot, doc, getDoc, setDoc, updateDoc, deleteDoc, serverTimestamp
 } from 'firebase/firestore';
 import { db } from '../firebase';
-import type { Race, Protest } from '../types';
+import type { Race, Protest, Feedback } from '../types';
 import { formatDate } from '../utils/dateUtils';
 import { useNavigate } from 'react-router-dom';
 import NotificationBell from '../components/NotificationBell';
@@ -23,9 +25,10 @@ export default function AdminPainel() {
     const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
     const [races, setRaces] = useState<Race[]>([]);
     const [protests, setProtests] = useState<Protest[]>([]);
+    const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
 
     // New state for tabs, search and pagination
-    const [activeTab, setActiveTab] = useState<0 | 1>(0); // 0 = Em Andamento, 1 = Histórico
+    const [activeTab, setActiveTab] = useState<0 | 1 | 2>(0); // 0 = Em Andamento, 1 = Histórico, 2 = Feedback
     const [searchQuery, setSearchQuery] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
 
@@ -47,9 +50,19 @@ export default function AdminPainel() {
             setProtests(protestsData);
         });
 
+        const qFeedbacks = query(collection(db, 'feedback'), orderBy('createdAt', 'desc'));
+        const unsubscribeFeedbacks = onSnapshot(qFeedbacks, (snapshot) => {
+            const feedbacksData = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            })) as Feedback[];
+            setFeedbacks(feedbacksData);
+        });
+
         return () => {
             unsubscribeRaces();
             unsubscribeProtests();
+            unsubscribeFeedbacks();
         };
     }, []);
 
@@ -241,7 +254,7 @@ export default function AdminPainel() {
         }
     };
 
-    const handleTabChange = (_event: React.SyntheticEvent, newValue: 0 | 1) => {
+    const handleTabChange = (_event: React.SyntheticEvent, newValue: 0 | 1 | 2) => {
         setActiveTab(newValue);
     };
 
@@ -249,6 +262,17 @@ export default function AdminPainel() {
         setCurrentPage(page);
         // Scroll to top when changing pages
         window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    const handleMarkAsRead = async (feedbackId: string) => {
+        try {
+            await updateDoc(doc(db, 'feedback', feedbackId), {
+                status: 'read'
+            });
+        } catch (error) {
+            console.error("Error marking feedback as read:", error);
+            setMessage({ type: 'error', text: 'Erro ao marcar feedback como lido.' });
+        }
     };
 
     return (
@@ -314,6 +338,10 @@ export default function AdminPainel() {
                         <Tab
                             label={`Histórico (${historicalRaces.length})`}
                             sx={{ fontWeight: activeTab === 1 ? 'bold' : 'normal' }}
+                        />
+                        <Tab
+                            label={`Caixa de Entrada (${feedbacks.filter(f => f.status === 'open').length})`}
+                            sx={{ fontWeight: activeTab === 2 ? 'bold' : 'normal' }}
                         />
                     </Tabs>
                 </Box>
@@ -479,6 +507,125 @@ export default function AdminPainel() {
                     </>
                 )}
             </Box>
+
+            {/* FEEDBACK TAB (activeTab === 2) */}
+            {activeTab === 2 && (
+                <Box sx={{ mt: 4 }}>
+                    <Typography variant="h6" gutterBottom>Mensagens dos Pilotos</Typography>
+
+                    {feedbacks.length === 0 ? (
+                        <Paper sx={{ p: 4, textAlign: 'center' }}>
+                            <Typography color="text.secondary">
+                                Nenhuma mensagem recebida ainda.
+                            </Typography>
+                        </Paper>
+                    ) : (
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                            {/* Open Feedbacks First */}
+                            {feedbacks
+                                .filter(f => f.status === 'open')
+                                .map((feedback) => {
+                                    const typeConfig = {
+                                        'Bug': { color: 'error' as const, label: '🐛 Bug' },
+                                        'Sugestão': { color: 'success' as const, label: '💡 Sugestão' },
+                                        'Reclamação': { color: 'warning' as const, label: '⚠️ Reclamação' },
+                                        'Outros': { color: 'default' as const, label: '📝 Outros' }
+                                    };
+                                    const config = typeConfig[feedback.type];
+
+                                    return (
+                                        <Card key={feedback.id} elevation={3}>
+                                            <CardContent>
+                                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                                                    <Box>
+                                                        <Typography variant="h6">{feedback.userName}</Typography>
+                                                        <Typography variant="caption" color="text.secondary">
+                                                            {new Date(feedback.createdAt).toLocaleString('pt-BR')}
+                                                        </Typography>
+                                                    </Box>
+                                                    <Chip label={config.label} color={config.color} />
+                                                </Box>
+
+                                                <Typography variant="body1" sx={{ mb: 2, whiteSpace: 'pre-wrap' }}>
+                                                    {feedback.message}
+                                                </Typography>
+
+                                                {feedback.attachmentUrl && (
+                                                    <Box sx={{ mb: 2 }}>
+                                                        <Button
+                                                            size="small"
+                                                            variant="outlined"
+                                                            startIcon={<AttachFileIcon />}
+                                                            onClick={() => window.open(feedback.attachmentUrl, '_blank')}
+                                                        >
+                                                            Ver Anexo
+                                                        </Button>
+                                                    </Box>
+                                                )}
+                                            </CardContent>
+                                            <CardActions sx={{ justifyContent: 'flex-end' }}>
+                                                <Button
+                                                    size="small"
+                                                    variant="contained"
+                                                    color="success"
+                                                    startIcon={<CheckCircleIcon />}
+                                                    onClick={() => handleMarkAsRead(feedback.id)}
+                                                >
+                                                    Marcar como Lido
+                                                </Button>
+                                            </CardActions>
+                                        </Card>
+                                    );
+                                })}
+
+                            {/* Read Feedbacks (Collapsed or Faded) */}
+                            {feedbacks.filter(f => f.status === 'read').length > 0 && (
+                                <>
+                                    <Divider sx={{ my: 2 }}>
+                                        <Typography variant="caption" color="text.secondary">
+                                            Mensagens Lidas ({feedbacks.filter(f => f.status === 'read').length})
+                                        </Typography>
+                                    </Divider>
+
+                                    {feedbacks
+                                        .filter(f => f.status === 'read')
+                                        .slice(0, 10) // Show only last 10 read
+                                        .map((feedback) => {
+                                            const typeConfig = {
+                                                'Bug': { color: 'error' as const, label: '🐛 Bug' },
+                                                'Sugestão': { color: 'success' as const, label: '💡 Sugestão' },
+                                                'Reclamação': { color: 'warning' as const, label: '⚠️ Reclamação' },
+                                                'Outros': { color: 'default' as const, label: '📝 Outros' }
+                                            };
+                                            const config = typeConfig[feedback.type];
+
+                                            return (
+                                                <Card key={feedback.id} elevation={1} sx={{ opacity: 0.6 }}>
+                                                    <CardContent>
+                                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                                                            <Box>
+                                                                <Typography variant="subtitle1">{feedback.userName}</Typography>
+                                                                <Typography variant="caption" color="text.secondary">
+                                                                    {new Date(feedback.createdAt).toLocaleString('pt-BR')}
+                                                                </Typography>
+                                                            </Box>
+                                                            <Chip label={config.label} color={config.color} size="small" />
+                                                        </Box>
+
+                                                        <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'pre-wrap' }}>
+                                                            {feedback.message.substring(0, 100)}
+                                                            {feedback.message.length > 100 && '...'}
+                                                        </Typography>
+                                                    </CardContent>
+                                                </Card>
+                                            );
+                                        })}
+                                </>
+                            )}
+                        </Box>
+                    )}
+                </Box>
+            )}
 
             {/* Delete Management Section (collapsed list) */}
             <Box sx={{ mt: 6 }}>

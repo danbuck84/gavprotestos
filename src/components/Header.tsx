@@ -1,5 +1,6 @@
-import { AppBar, Toolbar, Box, IconButton, Avatar, Typography } from '@mui/material';
+import { AppBar, Toolbar, Typography, Box, IconButton, Avatar } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
+import SupportAgentIcon from '@mui/icons-material/SupportAgent';
 import NotificationBell from './NotificationBell';
 import { auth } from '../firebase';
 import { getInitials } from '../utils/stringUtils';
@@ -23,15 +24,29 @@ export default function Header() {
                 />
 
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0 }}>
+                    {/* Suporte Icon */}
+                    {user && (
+                        <IconButton
+                            color="inherit"
+                            onClick={() => navigate('/suporte')}
+                            aria-label="suporte"
+                            title="Fale Conosco"
+                        >
+                            <SupportAgentIcon />
+                        </IconButton>
+                    )}
+
+                    {/* Notification Bell */}
                     {user && <NotificationBell />}
 
+                    {/* User Profile */}
                     {user ? (
                         <IconButton onClick={handleProfile} sx={{ p: 0 }}>
                             <Avatar src={user.photoURL || undefined} alt={user.displayName || 'User'}>
                                 {getInitials(user.displayName)}
                             </Avatar>
                         </IconButton>
-                    ) : !user ? (
+                    ) : (
                         <Typography
                             variant="button"
                             onClick={() => navigate('/login')}
@@ -39,7 +54,7 @@ export default function Header() {
                         >
                             LOGIN
                         </Typography>
-                    ) : null}
+                    )}
                 </Box>
             </Toolbar>
         </AppBar>

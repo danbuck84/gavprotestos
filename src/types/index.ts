@@ -43,3 +43,17 @@ export interface Protest {
   verdict?: string; // 'Punido', 'Absolvido', etc.
   createdAt: string;
 }
+
+export type FeedbackType = 'Bug' | 'Sugestão' | 'Reclamação' | 'Outros';
+export type FeedbackStatus = 'open' | 'read';
+
+export interface Feedback {
+  id: string;
+  userId: string;
+  userName: string;
+  type: FeedbackType;
+  message: string;
+  attachmentUrl?: string;
+  status: FeedbackStatus;
+  createdAt: string;
+}
