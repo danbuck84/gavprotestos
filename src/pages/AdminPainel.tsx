@@ -329,8 +329,14 @@ export default function AdminPainel() {
                 <Typography variant="h5" gutterBottom>Gestão de Corridas</Typography>
 
                 {/* Tabs */}
-                <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
-                    <Tabs value={activeTab} onChange={handleTabChange}>
+                <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3, width: '100%', maxWidth: '100vw' }}>
+                    <Tabs
+                        value={activeTab}
+                        onChange={handleTabChange}
+                        variant="scrollable"
+                        scrollButtons="auto"
+                        allowScrollButtonsMobile
+                    >
                         <Tab
                             label={`Ativas (${activeRaces.length})`}
                             sx={{ fontWeight: activeTab === 0 ? 'bold' : 'normal' }}
@@ -346,163 +352,168 @@ export default function AdminPainel() {
                     </Tabs>
                 </Box>
 
-                {/* Search Bar */}
-                <TextField
-                    fullWidth
-                    placeholder="Buscar por Etapa, Pista ou Data..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    sx={{ mb: 3 }}
-                    InputProps={{
-                        startAdornment: (
-                            <InputAdornment position="start">
-                                <SearchIcon />
-                            </InputAdornment>
-                        ),
-                    }}
-                />
-
-                {/* Race Cards Grid */}
-                {filteredRaces.length === 0 ? (
-                    <Paper sx={{ p: 4, textAlign: 'center' }}>
-                        <Typography color="text.secondary">
-                            {searchQuery
-                                ? 'Nenhuma corrida encontrada com os critérios de busca.'
-                                : activeTab === 0
-                                    ? 'Nenhuma corrida em andamento no momento.'
-                                    : 'Nenhuma corrida no histórico.'}
-                        </Typography>
-                    </Paper>
-                ) : (
+                {/* RACE MANAGEMENT CONTENT - Only for tabs 0 and 1 */}
+                {(activeTab === 0 || activeTab === 1) && (
                     <>
-                        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' }, gap: 2 }}>
-                            {paginatedRaces.map((race) => {
-                                const raceProtests = protests.filter(p => p.raceId === race.id);
-                                const pendingCount = raceProtests.filter(p => p.status === 'pending').length;
-                                const reviewCount = raceProtests.filter(p => p.status === 'under_review').length;
-                                const concludedCount = raceProtests.filter(p => p.status === 'concluded').length;
-                                const totalCount = raceProtests.length;
-                                const deadlineOpen = isDeadlineOpen(race.date);
+                        {/* Search Bar */}
+                        <TextField
+                            fullWidth
+                            placeholder="Buscar por Etapa, Pista ou Data..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            sx={{ mb: 3 }}
+                            InputProps={{
+                                startAdornment: (
+                                    <InputAdornment position="start">
+                                        <SearchIcon />
+                                    </InputAdornment>
+                                ),
+                            }}
+                        />
 
-                                // Card title logic: prioritize eventName
-                                const cardTitle = race.eventName || race.trackName;
-                                const cardSubtitle = race.eventName
-                                    ? `${race.trackName} • ${formatDate(race.date)}`
-                                    : formatDate(race.date);
+                        {/* Race Cards Grid */}
+                        {filteredRaces.length === 0 ? (
+                            <Paper sx={{ p: 4, textAlign: 'center' }}>
+                                <Typography color="text.secondary">
+                                    {searchQuery
+                                        ? 'Nenhuma corrida encontrada com os critérios de busca.'
+                                        : activeTab === 0
+                                            ? 'Nenhuma corrida em andamento no momento.'
+                                            : 'Nenhuma corrida no histórico.'}
+                                </Typography>
+                            </Paper>
+                        ) : (
+                            <>
+                                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' }, gap: 2 }}>
+                                    {paginatedRaces.map((race) => {
+                                        const raceProtests = protests.filter(p => p.raceId === race.id);
+                                        const pendingCount = raceProtests.filter(p => p.status === 'pending').length;
+                                        const reviewCount = raceProtests.filter(p => p.status === 'under_review').length;
+                                        const concludedCount = raceProtests.filter(p => p.status === 'concluded').length;
+                                        const totalCount = raceProtests.length;
+                                        const deadlineOpen = isDeadlineOpen(race.date);
 
-                                // Check if race is completed
-                                const allProtestsConcluded = totalCount > 0 &&
-                                    raceProtests.every(p => p.status === 'concluded');
-                                const isOldRace = !deadlineOpen;
-                                const isCompleted = allProtestsConcluded && isOldRace;
+                                        // Card title logic: prioritize eventName
+                                        const cardTitle = race.eventName || race.trackName;
+                                        const cardSubtitle = race.eventName
+                                            ? `${race.trackName} • ${formatDate(race.date)}`
+                                            : formatDate(race.date);
 
-                                // Session type config
-                                const sessionType = getSessionTypeConfig(race.type);
+                                        // Check if race is completed
+                                        const allProtestsConcluded = totalCount > 0 &&
+                                            raceProtests.every(p => p.status === 'concluded');
+                                        const isOldRace = !deadlineOpen;
+                                        const isCompleted = allProtestsConcluded && isOldRace;
 
-                                return (
-                                    <Paper
-                                        key={race.id}
-                                        elevation={2}
-                                        sx={{
-                                            p: 3,
-                                            cursor: 'pointer',
-                                            transition: 'all 0.2s',
-                                            border: deadlineOpen ? '2px solid' : 'none',
-                                            borderColor: deadlineOpen ? 'warning.main' : 'transparent',
-                                            '&:hover': {
-                                                elevation: 6,
-                                                transform: 'translateY(-2px)',
-                                                bgcolor: 'action.hover'
-                                            }
-                                        }}
-                                        onClick={() => navigate(`/admin/corrida/${race.id}`)}
-                                    >
-                                        {/* Badge de Tipo de Sessão */}
-                                        <Chip
-                                            label={sessionType.label}
-                                            color={sessionType.color}
-                                            size="small"
-                                            sx={{ mb: 1 }}
+                                        // Session type config
+                                        const sessionType = getSessionTypeConfig(race.type);
+
+                                        return (
+                                            <Paper
+                                                key={race.id}
+                                                elevation={2}
+                                                sx={{
+                                                    p: 3,
+                                                    cursor: 'pointer',
+                                                    transition: 'all 0.2s',
+                                                    border: deadlineOpen ? '2px solid' : 'none',
+                                                    borderColor: deadlineOpen ? 'warning.main' : 'transparent',
+                                                    '&:hover': {
+                                                        elevation: 6,
+                                                        transform: 'translateY(-2px)',
+                                                        bgcolor: 'action.hover'
+                                                    }
+                                                }}
+                                                onClick={() => navigate(`/admin/corrida/${race.id}`)}
+                                            >
+                                                {/* Badge de Tipo de Sessão */}
+                                                <Chip
+                                                    label={sessionType.label}
+                                                    color={sessionType.color}
+                                                    size="small"
+                                                    sx={{ mb: 1 }}
+                                                />
+
+                                                <Typography variant="h6" fontWeight="bold" gutterBottom>
+                                                    {cardTitle}
+                                                </Typography>
+                                                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                                                    {cardSubtitle}
+                                                </Typography>
+
+                                                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 1 }}>
+                                                    {deadlineOpen && (
+                                                        <Chip
+                                                            label="Prazo Aberto"
+                                                            color="info"
+                                                            size="small"
+                                                            variant="outlined"
+                                                        />
+                                                    )}
+                                                    {pendingCount > 0 && (
+                                                        <Chip
+                                                            label={`${pendingCount} Pendente${pendingCount > 1 ? 's' : ''}`}
+                                                            color="warning"
+                                                            size="small"
+                                                            variant="filled"
+                                                        />
+                                                    )}
+                                                    {reviewCount > 0 && (
+                                                        <Chip
+                                                            label={`${reviewCount} Em Votação`}
+                                                            color="info"
+                                                            size="small"
+                                                            variant="filled"
+                                                        />
+                                                    )}
+                                                    {concludedCount > 0 && (
+                                                        <Chip
+                                                            label={`${concludedCount} Concluído${concludedCount > 1 ? 's' : ''}`}
+                                                            color="success"
+                                                            size="small"
+                                                            variant="filled"
+                                                        />
+                                                    )}
+                                                    {isCompleted && (
+                                                        <Chip
+                                                            label="Concluída"
+                                                            color="success"
+                                                            size="small"
+                                                            variant="outlined"
+                                                        />
+                                                    )}
+                                                    {totalCount === 0 && !deadlineOpen && (
+                                                        <Chip
+                                                            label="Sem protestos"
+                                                            color="default"
+                                                            size="small"
+                                                            variant="outlined"
+                                                        />
+                                                    )}
+                                                </Box>
+
+                                                <Typography variant="caption" display="block" color="text.secondary" sx={{ mt: 1 }}>
+                                                    👥 {race.drivers.length} pilotos • {totalCount} protesto{totalCount !== 1 ? 's' : ''}
+                                                </Typography>
+                                            </Paper>
+                                        );
+                                    })}
+                                </Box>
+
+                                {/* Pagination (only for Historical tab) */}
+                                {activeTab === 1 && totalPages > 1 && (
+                                    <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
+                                        <Pagination
+                                            count={totalPages}
+                                            page={currentPage}
+                                            onChange={handlePageChange}
+                                            color="primary"
+                                            showFirstButton
+                                            showLastButton
                                         />
-
-                                        <Typography variant="h6" fontWeight="bold" gutterBottom>
-                                            {cardTitle}
-                                        </Typography>
-                                        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                                            {cardSubtitle}
-                                        </Typography>
-
-                                        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 1 }}>
-                                            {deadlineOpen && (
-                                                <Chip
-                                                    label="Prazo Aberto"
-                                                    color="info"
-                                                    size="small"
-                                                    variant="outlined"
-                                                />
-                                            )}
-                                            {pendingCount > 0 && (
-                                                <Chip
-                                                    label={`${pendingCount} Pendente${pendingCount > 1 ? 's' : ''}`}
-                                                    color="warning"
-                                                    size="small"
-                                                    variant="filled"
-                                                />
-                                            )}
-                                            {reviewCount > 0 && (
-                                                <Chip
-                                                    label={`${reviewCount} Em Votação`}
-                                                    color="info"
-                                                    size="small"
-                                                    variant="filled"
-                                                />
-                                            )}
-                                            {concludedCount > 0 && (
-                                                <Chip
-                                                    label={`${concludedCount} Concluído${concludedCount > 1 ? 's' : ''}`}
-                                                    color="success"
-                                                    size="small"
-                                                    variant="filled"
-                                                />
-                                            )}
-                                            {isCompleted && (
-                                                <Chip
-                                                    label="Concluída"
-                                                    color="success"
-                                                    size="small"
-                                                    variant="outlined"
-                                                />
-                                            )}
-                                            {totalCount === 0 && !deadlineOpen && (
-                                                <Chip
-                                                    label="Sem protestos"
-                                                    color="default"
-                                                    size="small"
-                                                    variant="outlined"
-                                                />
-                                            )}
-                                        </Box>
-
-                                        <Typography variant="caption" display="block" color="text.secondary" sx={{ mt: 1 }}>
-                                            👥 {race.drivers.length} pilotos • {totalCount} protesto{totalCount !== 1 ? 's' : ''}
-                                        </Typography>
-                                    </Paper>
-                                );
-                            })}
-                        </Box>
-
-                        {/* Pagination (only for Historical tab) */}
-                        {activeTab === 1 && totalPages > 1 && (
-                            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
-                                <Pagination
-                                    count={totalPages}
-                                    page={currentPage}
-                                    onChange={handlePageChange}
-                                    color="primary"
-                                    showFirstButton
-                                    showLastButton
-                                />
-                            </Box>
+                                    </Box>
+                                )}
+                            </>
                         )}
                     </>
                 )}
