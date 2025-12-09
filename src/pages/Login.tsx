@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Button, Container, Typography, CircularProgress, Box, Divider, Alert } from '@mui/material';
+import { Button, Container, Typography, CircularProgress, Alert } from '@mui/material';
 import { httpsCallable } from 'firebase/functions';
-import { signInWithCustomToken, signInAnonymously } from 'firebase/auth';
+import { signInWithCustomToken } from 'firebase/auth';
 import { functions, auth } from '../firebase';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
@@ -29,19 +29,6 @@ export default function Login() {
         } catch (error: any) {
             console.error("Error initiating login", error);
             setError(`Erro ao conectar com Steam: ${error.message || 'Tente novamente.'}`);
-            setLoading(false);
-        }
-    };
-
-    const handleDevLogin = async () => {
-        setLoading(true);
-        setError(null);
-        try {
-            await signInAnonymously(auth);
-            navigate('/');
-        } catch (error: any) {
-            console.error("Dev login failed", error);
-            setError(`Login de teste falhou: ${error.message}`);
             setLoading(false);
         }
     };
@@ -98,25 +85,15 @@ export default function Login() {
             {loading ? (
                 <CircularProgress />
             ) : (
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    <Button
-                        variant="contained"
-                        size="large"
-                        onClick={handleSteamLogin}
-                    >
-                        Entrar com a Steam
-                    </Button>
-
-                    {/* Dev Login - Only for development/testing */}
-                    <Divider>OU</Divider>
-                    <Button
-                        variant="outlined"
-                        color="secondary"
-                        onClick={handleDevLogin}
-                    >
-                        Login de Teste (Dev)
-                    </Button>
-                </Box>
+                <Button
+                    variant="contained"
+                    size="large"
+                    fullWidth
+                    onClick={handleSteamLogin}
+                    sx={{ mt: 2 }}
+                >
+                    Entrar com a Steam
+                </Button>
             )}
         </Container>
     );
