@@ -42,15 +42,52 @@ export function useFcmToken() {
                     // Aguardar o service worker estar pronto
                     await navigator.serviceWorker.ready;
 
+
                     // VAPID Key validada
                     const validKey = 'BFla3EtEi5N_XQChX5EWmOcoitBBt9Uxy_zC6VmCCMUZBw6WSN4VpRW_oUZSfu2qqeGRoPgTi8b5ynmHJ_yReO';
                     console.log('Using Vapid Key:', validKey);
 
-                    // Obter token FCM
-                    const fcmToken = await getToken(messagingInstance, {
-                        vapidKey: validKey,
-                        serviceWorkerRegistration: registration
-                    });
+                    let fcmToken: string | null = null;
+
+                    // Tentar obter token FCM com retry automático em caso de subscription órfã
+                    try {
+                        fcmToken = await getToken(messagingInstance, {
+                            vapidKey: validKey,
+                            serviceWorkerRegistration: registration
+                        });
+                    } catch (tokenError: any) {
+                        console.warn('Erro ao obter token FCM (primeira tentativa):', tokenError);
+
+                        // Se o erro for relacionado à VAPID key inválida, limpar subscription órfã e tentar novamente
+                        if (tokenError?.message?.toLowerCase().includes('valid') ||
+                            tokenError?.message?.toLowerCase().includes('applicationserverkey')) {
+                            console.log('🔄 Detectada subscription órfã. Limpando e tentando novamente...');
+
+                            try {
+                                // Obter subscription atual
+                                const subscription = await registration.pushManager.getSubscription();
+
+                                if (subscription) {
+                                    console.log('📌 Removendo subscription antiga:', subscription.endpoint.substring(0, 50) + '...');
+                                    await subscription.unsubscribe();
+                                    console.log('✅ Subscription antiga removida com sucesso');
+                                }
+
+                                // Tentar obter token novamente após limpeza
+                                console.log('🔄 Tentando obter token FCM novamente...');
+                                fcmToken = await getToken(messagingInstance, {
+                                    vapidKey: validKey,
+                                    serviceWorkerRegistration: registration
+                                });
+                                console.log('✅ Token FCM obtido com sucesso após retry');
+                            } catch (retryError) {
+                                console.error('❌ Erro mesmo após limpeza de subscription:', retryError);
+                                throw retryError;
+                            }
+                        } else {
+                            throw tokenError;
+                        }
+                    }
 
                     if (fcmToken) {
                         console.log('Token FCM obtido:', fcmToken);

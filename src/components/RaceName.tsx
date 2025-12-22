@@ -27,23 +27,30 @@ export default function RaceName({ raceId, variant = 'body2', fontWeight, color 
 
         const fetchRace = async () => {
             try {
+                console.log('[RaceName] Buscando race:', raceId);
                 const raceDoc = await getDoc(doc(db, 'races', raceId));
+
                 if (raceDoc.exists()) {
                     const race = raceDoc.data() as Race;
+                    console.log('[RaceName] Race encontrada:', { id: raceId, eventName: race.eventName, trackName: race.trackName });
+
                     // Prefer eventName, fallback to trackName or a formatted version
                     const displayName = race.eventName || race.trackName || 'Etapa Desconhecida';
-                    raceCache[raceId] = displayName;
+
+                    // Apenas cachear se tiver um nome válido
+                    if (displayName !== 'Etapa Desconhecida') {
+                        raceCache[raceId] = displayName;
+                    }
                     setName(displayName);
                 } else {
-                    const fallbackName = 'Etapa Desconhecida';
-                    raceCache[raceId] = fallbackName;
-                    setName(fallbackName);
+                    console.warn('[RaceName] Race não encontrada no Firestore:', raceId);
+                    // NÃO cachear quando não encontrado - pode ser temporário
+                    setName('Etapa Desconhecida');
                 }
             } catch (error) {
-                console.error("Error fetching race name:", error);
-                const fallbackName = 'Etapa Desconhecida';
-                raceCache[raceId] = fallbackName;
-                setName(fallbackName);
+                console.error('[RaceName] Erro ao buscar race:', error);
+                // NÃO cachear erros
+                setName('Etapa Desconhecida');
             } finally {
                 setLoading(false);
             }
