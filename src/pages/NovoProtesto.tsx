@@ -105,6 +105,11 @@ export default function NovoProtesto() {
 
     const uniqueEvents = Array.from(eventGroups.keys());
 
+    // Array de pilotos ordenado alfabeticamente
+    const sortedDrivers = useMemo(() => {
+        return [...drivers].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+    }, [drivers]);
+
     useEffect(() => {
         if (selectedRaceId) {
             const race = races.find(r => r.id === selectedRaceId);
@@ -354,7 +359,7 @@ export default function NovoProtesto() {
                         onChange={(e) => setAccusedId(e.target.value)}
                         required
                     >
-                        {drivers.map((driver) => (
+                        {sortedDrivers.map((driver) => (
                             <MenuItem key={driver.steamId} value={driver.steamId}>
                                 {driver.name}
                             </MenuItem>
