@@ -146,84 +146,272 @@ async function sendEmail(email, subject, text) {
     }
 }
 
-// 1. Scheduled Function: Check Deadlines (Every 30 mins)
-exports.checkDeadlines = onSchedule("every 30 minutes", async (event) => {
-    const now = admin.firestore.Timestamp.now();
-    // const db = admin.firestore(); // db is already global
+// --- PUSH NOTIFICATIONS (FCM) ---
 
-    // Task A: Race Protest Deadline Warning (1h before 24h deadline)
-    // We look for races that happened between 22.5h and 23h ago.
-    // 23h ago = now - 23h.
-    const twentyThreeHoursAgo = new Date(now.toMillis() - (23 * 60 * 60 * 1000));
-    const twentyTwoHoursThirtyAgo = new Date(now.toMillis() - (22.5 * 60 * 60 * 1000));
+const db = admin.firestore();
 
-    // This query might need an index on 'date'
-    const racesSnapshot = await db.collection('races')
-        .where('date', '>=', twentyThreeHoursAgo.toISOString())
-        .where('date', '<=', twentyTwoHoursThirtyAgo.toISOString()) // Assuming date is ISO string
+// Helper: Get all admin FCM tokens
+async function getAdminTokens() {
+    const snapshot = await db.collection('users')
+        .where('role', 'in', ['admin', 'super-admin'])
         .get();
 
-    racesSnapshot.forEach(async (raceDoc) => {
+    return snapshot.docs
+        .map(doc => doc.data().fcmToken)
+        .filter(token => token); // Remove nulls/undefined
+}
+
+// Helper: Get all driver FCM tokens
+async function getAllDriverTokens() {
+    const snapshot = await db.collection('users')
+        .where('role', '==', 'driver')
+        .get();
+
+    return snapshot.docs
+        .map(doc => doc.data().fcmToken)
+        .filter(token => token);
+}
+
+// Helper: Send push notification in batches (FCM limit: 500 tokens per request)
+async function sendPushNotification(tokens, notification, data = {}) {
+    if (!tokens || tokens.length === 0) {
+        console.log('No tokens to send notifications to');
+        return;
+    }
+
+    console.log(`Sending push notifications to ${tokens.length} devices`);
+
+    // FCM limits to 500 tokens per multicast request
+    const batchSize = 500;
+    const batches = [];
+
+    for (let i = 0; i < tokens.length; i += batchSize) {
+        batches.push(tokens.slice(i, i + batchSize));
+    }
+
+    for (const batch of batches) {
+        const message = {
+            tokens: batch,
+            notification,
+            data,
+            android: {
+                priority: 'high'
+            },
+            apns: {
+                payload: {
+                    aps: {
+                        sound: 'default',
+                        badge: 1
+                    }
+                }
+            }
+        };
+
+        try {
+            const response = await admin.messaging().sendMulticast(message);
+            console.log(`✅ Sent ${response.successCount} notifications, ${response.failureCount} failed`);
+
+            // Log failed tokens for cleanup (future improvement)
+            if (response.failureCount > 0) {
+                response.responses.forEach((resp, idx) => {
+                    if (!resp.success) {
+                        console.error(`Failed to send to token ${batch[idx].substring(0, 20)}...: ${resp.error}`);
+                    }
+                });
+            }
+        } catch (error) {
+            console.error('Error sending push notification:', error);
+        }
+    }
+}
+
+
+// 1. Scheduled Function: Check Deadlines with Push Notifications (Every 15 mins)
+exports.checkDeadlines = onSchedule("every 15 minutes", async (event) => {
+    const now = Date.now();
+    console.log(`[checkDeadlines] Running at ${new Date(now).toISOString()}`);
+
+    // === TASK A: 1h Before Protest Deadline (23h after race) ===
+    // Look for races that happened between 22h45min and 23h15min ago
+    const twentyThreeHoursAgo = now - (23 * 60 * 60 * 1000);
+    const buffer = 15 * 60 * 1000; // 15 minutes buffer
+
+    const protestWarningSnapshot = await db.collection('races')
+        .where('date', '>=', new Date(twentyThreeHoursAgo - buffer).toISOString())
+        .where('date', '<=', new Date(twentyThreeHoursAgo + buffer).toISOString())
+        .get();
+
+    for (const raceDoc of protestWarningSnapshot.docs) {
         const race = raceDoc.data();
-        // Notify all drivers (This could be heavy if many drivers, consider batching)
-        // For now, we notify all users with role 'driver'
-        const driversSnapshot = await db.collection('users').where('role', '==', 'driver').get();
-        driversSnapshot.forEach(driverDoc => {
-            createNotification(
-                driverDoc.id,
-                'Prazo de Protesto Encerrando',
-                `Falta 1 hora para encerrar o prazo de protestos da corrida em ${race.track}.`,
-                `/novo-protesto`
-            );
-        });
-    });
 
-    // Task B: Voting Deadline Warning (1h before 48h deadline)
-    // We look for protests created between 22.5h and 23h ago (since voting starts at 24h and ends at 48h? No.)
-    // Wait, the user said: "Verificar protestos abertos há 23 horas. Enviar notificação aos admins que ainda não votaram."
-    // This implies warning BEFORE voting starts? Or warning BEFORE voting ends?
-    // User said: "encerrar às 20h da quarta-feira... automaticamente aberta pros admins votarem."
-    // "votação deve ser automaticamente encerrada às 20h da quinta-feira" (48h after event).
-    // So voting window is 24h-48h.
-    // If we warn at "23h open", maybe they mean 23h AFTER VOTING OPENED? (i.e. 47h after event).
-    // Or maybe 23h after event (1h before voting opens)?
-    // "Aviso aos Admins: Verificar protestos abertos há 23 horas." -> This sounds like 23h after creation.
-    // If protest created at T+1h, 23h later is T+24h. So just when voting opens.
-    // Let's assume the goal is to warn admins that voting is about to CLOSE.
-    // So we check races that happened 47h ago.
+        // Check if already notified
+        if (race.notifiedProtestWarning) {
+            continue;
+        }
 
-    const fortySevenHoursAgo = new Date(now.toMillis() - (47 * 60 * 60 * 1000));
-    const fortySixHoursThirtyAgo = new Date(now.toMillis() - (46.5 * 60 * 60 * 1000));
+        console.log(`[checkDeadlines] Protest warning for race ${raceDoc.id}`);
 
-    // Find races ending soon
-    const racesEndingVoteSnapshot = await db.collection('races')
-        .where('date', '>=', fortySevenHoursAgo.toISOString())
-        .where('date', '<=', fortySixHoursThirtyAgo.toISOString())
+        try {
+            // Get all driver tokens
+            const driverTokens = await getAllDriverTokens();
+
+            if (driverTokens.length > 0) {
+                await sendPushNotification(
+                    driverTokens,
+                    {
+                        title: 'Atenção: Prazo de protestos encerrando',
+                        body: 'Falta 1 hora para encerrar o envio de protestos!'
+                    },
+                    {
+                        raceId: raceDoc.id,
+                        type: 'protest_deadline_warning'
+                    }
+                );
+            }
+
+            // Also create in-app notifications for drivers
+            const driversSnapshot = await db.collection('users').where('role', '==', 'driver').get();
+            for (const driverDoc of driversSnapshot.docs) {
+                await createNotification(
+                    driverDoc.id,
+                    'Prazo de Protesto Encerrando',
+                    `Falta 1 hora para encerrar o prazo de protestos da etapa ${race.eventName || race.trackName}.`,
+                    `/novo-protesto`
+                );
+            }
+
+            // Mark as notified
+            await raceDoc.ref.update({ notifiedProtestWarning: true });
+        } catch (error) {
+            console.error(`[checkDeadlines] Error in protest warning for race ${raceDoc.id}:`, error);
+        }
+    }
+
+    // === TASK B: Voting Opens (24h after race - protest deadline) ===
+    // Look for races that happened between 23h45min and 24h15min ago
+    const twentyFourHoursAgo = now - (24 * 60 * 60 * 1000);
+
+    const votingOpenSnapshot = await db.collection('races')
+        .where('date', '>=', new Date(twentyFourHoursAgo - buffer).toISOString())
+        .where('date', '<=', new Date(twentyFourHoursAgo + buffer).toISOString())
         .get();
 
-    racesEndingVoteSnapshot.forEach(async (raceDoc) => {
-        // Find protests for this race
+    for (const raceDoc of votingOpenSnapshot.docs) {
+        const race = raceDoc.data();
+
+        // Check if already notified
+        if (race.notifiedVotingOpen) {
+            continue;
+        }
+
+        console.log(`[checkDeadlines] Voting open for race ${raceDoc.id}`);
+
+        try {
+            // Get admin tokens
+            const adminTokens = await getAdminTokens();
+
+            if (adminTokens.length > 0) {
+                await sendPushNotification(
+                    adminTokens,
+                    {
+                        title: 'Fase de protestos encerrada',
+                        body: 'A votação está aberta.'
+                    },
+                    {
+                        raceId: raceDoc.id,
+                        type: 'voting_open'
+                    }
+                );
+            }
+
+            // Also create in-app notifications for admins
+            const adminsSnapshot = await db.collection('users').where('role', 'in', ['admin', 'super-admin']).get();
+            for (const adminDoc of adminsSnapshot.docs) {
+                await createNotification(
+                    adminDoc.id,
+                    'Votação Aberta',
+                    `A votação dos protestos da etapa ${race.eventName || race.trackName} está aberta.`,
+                    `/admin`
+                );
+            }
+
+            // Mark as notified
+            await raceDoc.ref.update({ notifiedVotingOpen: true });
+        } catch (error) {
+            console.error(`[checkDeadlines] Error in voting open for race ${raceDoc.id}:`, error);
+        }
+    }
+
+    // === TASK C: 1h Before Voting Deadline (47h after race) ===
+    // Look for races that happened between 46h45min and 47h15min ago
+    const fortySevenHoursAgo = now - (47 * 60 * 60 * 1000);
+
+    const votingWarningSnapshot = await db.collection('races')
+        .where('date', '>=', new Date(fortySevenHoursAgo - buffer).toISOString())
+        .where('date', '<=', new Date(fortySevenHoursAgo + buffer).toISOString())
+        .get();
+
+    for (const raceDoc of votingWarningSnapshot.docs) {
+        const race = raceDoc.data();
+
+        // Check if already notified
+        if (race.notifiedVotingWarning) {
+            continue;
+        }
+
+        // Check if there are protests pending for this race
         const protestsSnapshot = await db.collection('protests')
             .where('raceId', '==', raceDoc.id)
             .where('status', '==', 'under_review')
             .get();
 
-        if (protestsSnapshot.empty) return;
+        if (protestsSnapshot.empty) {
+            // No pending protests, skip
+            await raceDoc.ref.update({ notifiedVotingWarning: true });
+            continue;
+        }
 
-        // Notify Admins
-        const adminsSnapshot = await db.collection('users').where('role', 'in', ['admin', 'super-admin']).get();
+        console.log(`[checkDeadlines] Voting warning for race ${raceDoc.id}`);
 
-        adminsSnapshot.forEach(adminDoc => {
-            // Check if admin voted on these protests? Too complex for now. Just warn.
-            createNotification(
-                adminDoc.id,
-                'Votação Encerrando',
-                `Falta 1 hora para encerrar a votação dos protestos da corrida em ${raceDoc.data().track}.`,
-                `/admin`
-            );
-        });
-    });
+        try {
+            // Get admin tokens
+            const adminTokens = await getAdminTokens();
+
+            if (adminTokens.length > 0) {
+                await sendPushNotification(
+                    adminTokens,
+                    {
+                        title: 'Urgente: Votação encerrando',
+                        body: '1 hora restante para finalizar as votações.'
+                    },
+                    {
+                        raceId: raceDoc.id,
+                        type: 'voting_deadline_warning'
+                    }
+                );
+            }
+
+            // Also create in-app notifications
+            const adminsSnapshot = await db.collection('users').where('role', 'in', ['admin', 'super-admin']).get();
+            for (const adminDoc of adminsSnapshot.docs) {
+                await createNotification(
+                    adminDoc.id,
+                    'Votação Encerrando',
+                    `Falta 1 hora para encerrar a votação dos protestos da etapa ${race.eventName || race.trackName}.`,
+                    `/admin`
+                );
+            }
+
+            // Mark as notified
+            await raceDoc.ref.update({ notifiedVotingWarning: true });
+        } catch (error) {
+            console.error(`[checkDeadlines] Error in voting warning for race ${raceDoc.id}:`, error);
+        }
+    }
+
+    console.log('[checkDeadlines] Completed successfully');
 });
+
 
 // 2. Trigger: New Protest -> Notify Admins
 exports.onProtestCreated = onDocumentCreated("protests/{protestId}", async (event) => {
@@ -240,13 +428,95 @@ exports.onProtestCreated = onDocumentCreated("protests/{protestId}", async (even
     });
 });
 
-// 3. Trigger: Cleanup Videos on Conclusion
+// 3. Trigger: New Race Created -> Notify All Drivers with Push Notification
+exports.onRaceCreated = onDocumentCreated("races/{raceId}", async (event) => {
+    const race = event.data.data();
+    const raceId = event.params.raceId;
+
+    console.log(`[onRaceCreated] New race created: ${raceId}`);
+
+    try {
+        // Get all driver tokens
+        const driverTokens = await getAllDriverTokens();
+
+        if (driverTokens.length === 0) {
+            console.log('[onRaceCreated] No driver tokens found');
+            return;
+        }
+
+        // Send push notification
+        await sendPushNotification(
+            driverTokens,
+            {
+                title: 'Nova etapa disponível!',
+                body: 'O envio de protestos está aberto.'
+            },
+            {
+                raceId: raceId,
+                type: 'new_race',
+                eventName: race.eventName || race.trackName || 'Nova corrida'
+            }
+        );
+
+        console.log(`[onRaceCreated] Push notifications sent to ${driverTokens.length} drivers`);
+    } catch (error) {
+        console.error('[onRaceCreated] Error sending notifications:', error);
+    }
+});
+
+
+// 3. Trigger: Cleanup Videos on Conclusion + Notify Parties
 exports.onProtestConcluded = onDocumentUpdated("protests/{protestId}", async (event) => {
     const newData = event.data.after.data();
     const previousData = event.data.before.data();
 
     // Check if status changed to 'concluded'
     if (newData.status === 'concluded' && previousData.status !== 'concluded') {
+        const protestId = event.params.protestId;
+        console.log(`[onProtestConcluded] Protest ${protestId} concluded`);
+
+        // --- PUSH NOTIFICATIONS ---
+        try {
+            // Get race information for better message
+            const raceDoc = await db.collection('races').doc(newData.raceId).get();
+            const race = raceDoc.exists ? raceDoc.data() : {};
+            const eventName = race.eventName || race.trackName || 'uma corrida';
+
+            // Get tokens for accuser and accused
+            const tokens = [];
+
+            // Get accuser token
+            const accuserDoc = await db.collection('users').doc(newData.accuserId).get();
+            if (accuserDoc.exists && accuserDoc.data().fcmToken) {
+                tokens.push(accuserDoc.data().fcmToken);
+            }
+
+            // Get accused token
+            const accusedDoc = await db.collection('users').doc(newData.accusedId).get();
+            if (accusedDoc.exists && accusedDoc.data().fcmToken) {
+                tokens.push(accusedDoc.data().fcmToken);
+            }
+
+            if (tokens.length > 0) {
+                await sendPushNotification(
+                    tokens,
+                    {
+                        title: 'Saiu o veredito do seu protesto',
+                        body: `Saiu o veredito do seu protesto na etapa ${eventName}. Toque para ver.`
+                    },
+                    {
+                        protestId: protestId,
+                        raceId: newData.raceId,
+                        type: 'protest_concluded'
+                    }
+                );
+                console.log(`[onProtestConcluded] Push notifications sent to ${tokens.length} users`);
+            }
+        } catch (error) {
+            console.error('[onProtestConcluded] Error sending push notifications:', error);
+        }
+
+        // --- VIDEO CLEANUP ---
         const videoUrls = newData.videoUrls || [];
         if (videoUrls.length === 0) return;
 
