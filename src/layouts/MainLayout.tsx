@@ -2,19 +2,22 @@ import { Box } from '@mui/material';
 import Header from '../components/Header';
 import BottomNav from '../components/BottomNav';
 import { Outlet } from 'react-router-dom';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../firebase';
 import { useFcmToken } from '../hooks/useFcmToken';
 
 export default function MainLayout() {
     const { requestForToken } = useFcmToken();
+    const notificationRequested = useRef(false);
 
     useEffect(() => {
-        // Solicitar token FCM quando usuário estiver logado
+        // Solicitar token FCM quando usuário estiver logado (apenas uma vez)
         const unsubscribe = onAuthStateChanged(auth, (user) => {
-            if (user) {
+            if (user && !notificationRequested.current) {
                 console.log('Usuário logado, solicitando permissão de notificação...');
+                notificationRequested.current = true; // Trava imediata para evitar loop
+
                 // Pequeno delay para garantir que o UI já foi montado
                 setTimeout(() => {
                     requestForToken();
@@ -23,7 +26,7 @@ export default function MainLayout() {
         });
 
         return () => unsubscribe();
-    }, [requestForToken]);
+    }, []); // Dependências vazias - executa apenas na montagem
 
     return (
         <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
