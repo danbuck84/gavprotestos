@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { getToken, onMessage } from 'firebase/messaging';
 import { doc, setDoc } from 'firebase/firestore';
 import { messaging, db, auth } from '../firebase';
@@ -7,6 +7,46 @@ export function useFcmToken() {
     const [token, setToken] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    // Listener PERSISTENTE para mensagens em foreground
+    // (sempre ativo, mesmo após reloads)
+    useEffect(() => {
+        const setupForegroundListener = async () => {
+            const messagingInstance = await messaging;
+            if (!messagingInstance) {
+                console.log('[Foreground Listener] Messaging não disponível');
+                return;
+            }
+
+            console.log('[Foreground Listener] Configurando listener de mensagens...');
+
+            const unsubscribe = onMessage(messagingInstance, (payload) => {
+                console.log('📬 Mensagem recebida em FOREGROUND:', payload);
+
+                const title = payload.notification?.title || 'GAV Protestos';
+                const body = payload.notification?.body || 'Nova notificação';
+
+                // Exibir notificação nativa do navegador
+                if (Notification.permission === 'granted') {
+                    new Notification(title, {
+                        body: body,
+                        icon: '/pwa-192x192.png',
+                        badge: '/favicon-32x32.png',
+                        tag: payload.data?.raceId || 'notification',
+                        requireInteraction: false
+                    });
+                }
+
+                // ALERT visual para garantir visibilidade
+                alert(`🔔 ${title}\n\n${body}`);
+            });
+
+            return unsubscribe;
+        };
+
+        setupForegroundListener();
+    }, []); // Apenas uma vez na montagem
+
 
     const requestForToken = async () => {
         setIsLoading(true);
@@ -93,33 +133,13 @@ export function useFcmToken() {
                         console.log('Token FCM obtido:', fcmToken);
                         setToken(fcmToken);
 
+
                         // Salvar token no Firestore
                         const userRef = doc(db, 'users', currentUser.uid);
                         await setDoc(userRef, { fcmToken }, { merge: true });
                         console.log('Token salvo no Firestore para usuário:', currentUser.uid);
 
-                        // Configurar listener para mensagens em foreground
-                        onMessage(messagingInstance, (payload) => {
-                            console.log('📬 Mensagem recebida em foreground:', payload);
-
-                            const title = payload.notification?.title || 'GAV Protestos';
-                            const body = payload.notification?.body || 'Nova notificação';
-
-                            // Exibir notificação nativa do navegador
-                            if (Notification.permission === 'granted') {
-                                new Notification(title, {
-                                    body: body,
-                                    icon: '/pwa-192x192.png',
-                                    badge: '/favicon-32x32.png',
-                                    tag: payload.data?.raceId || 'notification',
-                                    requireInteraction: false
-                                });
-                            }
-
-                            // ADICIONAL: Alert visual para garantir que o usuário veja
-                            // (útil quando o app está em primeiro plano)
-                            alert(`🔔 ${title}\n\n${body}`);
-                        });
+                        // Listener de foreground agora está no useEffect separado (linhas 10-47)
                     }
                 } else {
                     console.log('Service Workers não são suportados neste navegador');
