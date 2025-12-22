@@ -3,6 +3,7 @@ import { getFirestore } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 import { getFunctions } from 'firebase/functions';
 import { getStorage } from 'firebase/storage';
+import { getMessaging, isSupported } from 'firebase/messaging';
 
 const firebaseConfig = {
     apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -19,3 +20,18 @@ export const db = getFirestore(app);
 export const auth = getAuth(app);
 export const functions = getFunctions(app);
 export const storage = getStorage(app);
+
+// Messaging - verificar suporte antes de inicializar
+export const messaging = (async () => {
+    try {
+        const isSupportedBrowser = await isSupported();
+        if (isSupportedBrowser) {
+            return getMessaging(app);
+        }
+        console.log('Firebase Messaging não é suportado neste navegador');
+        return null;
+    } catch (err) {
+        console.log('Erro ao inicializar Firebase Messaging:', err);
+        return null;
+    }
+})();
