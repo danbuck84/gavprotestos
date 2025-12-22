@@ -100,19 +100,25 @@ export function useFcmToken() {
 
                         // Configurar listener para mensagens em foreground
                         onMessage(messagingInstance, (payload) => {
-                            console.log('Mensagem recebida em foreground:', payload);
+                            console.log('📬 Mensagem recebida em foreground:', payload);
 
-                            // Exibir notificação customizada
+                            const title = payload.notification?.title || 'GAV Protestos';
+                            const body = payload.notification?.body || 'Nova notificação';
+
+                            // Exibir notificação nativa do navegador
                             if (Notification.permission === 'granted') {
-                                new Notification(
-                                    payload.notification?.title || 'GAV Protestos',
-                                    {
-                                        body: payload.notification?.body || 'Nova notificação',
-                                        icon: '/pwa-192x192.png',
-                                        badge: '/favicon-32x32.png'
-                                    }
-                                );
+                                new Notification(title, {
+                                    body: body,
+                                    icon: '/pwa-192x192.png',
+                                    badge: '/favicon-32x32.png',
+                                    tag: payload.data?.raceId || 'notification',
+                                    requireInteraction: false
+                                });
                             }
+
+                            // ADICIONAL: Alert visual para garantir que o usuário veja
+                            // (útil quando o app está em primeiro plano)
+                            alert(`🔔 ${title}\n\n${body}`);
                         });
                     }
                 } else {

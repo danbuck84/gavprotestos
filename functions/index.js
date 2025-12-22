@@ -439,14 +439,20 @@ exports.onRaceCreated = onDocumentCreated("races/{raceId}", async (event) => {
         // Get all driver tokens
         const driverTokens = await getAllDriverTokens();
 
-        if (driverTokens.length === 0) {
-            console.log('[onRaceCreated] No driver tokens found');
+        // Get all admin tokens
+        const adminTokens = await getAdminTokens();
+
+        // Combine both arrays and remove duplicates (in case user has both roles)
+        const allTokens = [...new Set([...driverTokens, ...adminTokens])];
+
+        if (allTokens.length === 0) {
+            console.log('[onRaceCreated] No tokens found (drivers or admins)');
             return;
         }
 
-        // Send push notification
+        // Send push notification to everyone
         await sendPushNotification(
-            driverTokens,
+            allTokens,
             {
                 title: 'Nova etapa disponível!',
                 body: 'O envio de protestos está aberto.'
@@ -458,7 +464,7 @@ exports.onRaceCreated = onDocumentCreated("races/{raceId}", async (event) => {
             }
         );
 
-        console.log(`[onRaceCreated] Push notifications sent to ${driverTokens.length} drivers`);
+        console.log(`[onRaceCreated] Push notifications sent to ${allTokens.length} users (${driverTokens.length} drivers + ${adminTokens.length} admins)`);
     } catch (error) {
         console.error('[onRaceCreated] Error sending notifications:', error);
     }
