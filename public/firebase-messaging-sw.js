@@ -6,12 +6,12 @@ importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-comp
 
 // Configuração do Firebase (mesma do app)
 const firebaseConfig = {
-    apiKey: "AIzaSyBGXBb3VmPvwwJ8dT6xXfUWNqyc_w8qm-0",
+    apiKey: "AIzaSyASacoPm2irq9_3UrnwxpnHsnrUaACBDC8",
     authDomain: "gavprotestos.firebaseapp.com",
     projectId: "gavprotestos",
     storageBucket: "gavprotestos.firebasestorage.app",
-    messagingSenderId: "760658663626",
-    appId: "1:760658663626:web:4e5a0c0e5f5e1e1e1e1e1e"
+    messagingSenderId: "738996889988",
+    appId: "1:738996889988:web:b098692c96bffbb0a155d1"
 };
 
 // Inicializar Firebase
