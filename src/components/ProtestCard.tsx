@@ -4,6 +4,7 @@ import type { Protest } from '../types';
 import { translateStatus } from '../utils/translations';
 
 import UserName from './UserName';
+import RaceName from './RaceName';
 
 interface ProtestCardProps {
     protest: Protest;
@@ -48,7 +49,7 @@ export default function ProtestCard({ protest, isAdminView = false }: ProtestCar
                 </Box>
 
                 <Typography variant="body2" color="text.secondary" gutterBottom>
-                    Etapa: {protest.raceId}
+                    Etapa: <RaceName raceId={protest.raceId} />
                 </Typography>
 
                 <Typography variant="body2" color="text.primary" sx={{

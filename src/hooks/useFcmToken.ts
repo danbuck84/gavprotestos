@@ -3,9 +3,6 @@ import { getToken, onMessage } from 'firebase/messaging';
 import { doc, setDoc } from 'firebase/firestore';
 import { messaging, db, auth } from '../firebase';
 
-// VAPID Key do Firebase Cloud Messaging
-const VAPID_KEY = "BFla3EtEi5N_XQChX5EWmOcoitBBt9Uxy_zC6VmCCMUZBw6WSN4VpRW_oUZSfu2qqeGRoPgTi8b5ynmHJ_yReO";
-
 export function useFcmToken() {
     const [token, setToken] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -45,9 +42,13 @@ export function useFcmToken() {
                     // Aguardar o service worker estar pronto
                     await navigator.serviceWorker.ready;
 
+                    // VAPID Key validada
+                    const validKey = 'BFla3EtEi5N_XQChX5EWmOcoitBBt9Uxy_zC6VmCCMUZBw6WSN4VpRW_oUZSfu2qqeGRoPgTi8b5ynmHJ_yReO';
+                    console.log('Using Vapid Key:', validKey);
+
                     // Obter token FCM
                     const fcmToken = await getToken(messagingInstance, {
-                        vapidKey: VAPID_KEY,
+                        vapidKey: validKey,
                         serviceWorkerRegistration: registration
                     });
 
