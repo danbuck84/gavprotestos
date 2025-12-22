@@ -44,7 +44,7 @@ export function useFcmToken() {
 
 
                     // VAPID Key validada
-                    const validKey = 'BFla3EtEi5N_XQChX5EWmOcoitBBt9Uxy_zC6VmCCMUZBw6WSN4VpRW_oUZSfu2qqeGRoPgTi8b5ynmHJ_yReO';
+                    const validKey = 'BFIs3EtEi5N_XGChXSEWm0coitBBt9UXyUzC6VmCCMUZBwSWSN4VpRW_oUZSfu2qqelGRoPgTi8b5ynsHU_yRe0';
                     console.log('Using Vapid Key:', validKey);
 
                     let fcmToken: string | null = null;
