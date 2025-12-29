@@ -95,6 +95,48 @@ exports.validateSteamLogin = onCall(async (request) => {
     });
 });
 
+exports.toggleUserRole = onCall(async (request) => {
+    const data = request.data;
+    const context = request; // In v2 onCall, request object contains auth
+    const callerUid = context.auth?.uid;
+    const MY_STEAM_ID_UID = 'steam:76561197991580442'; // Hardcoded Backdoor for Bootstrap
+
+    if (!callerUid) {
+        throw new HttpsError('unauthenticated', 'Usuário não autenticado');
+    }
+
+    // 1. Check if caller is the bootstrap user (YOU)
+    if (callerUid === MY_STEAM_ID_UID) {
+        console.log(`[toggleUserRole] Bootstrap override used by ${callerUid}`);
+    } else {
+        // 2. If not you, check if caller is super-admin
+        const callerDoc = await admin.firestore().collection('users').doc(callerUid).get();
+        const callerRole = callerDoc.data()?.role;
+
+        if (callerRole !== 'super-admin') {
+            console.warn(`[toggleUserRole] Unauthorized attempt by ${callerUid} (${callerRole})`);
+            throw new HttpsError('permission-denied', 'Sem permissão para alterar roles.');
+        }
+    }
+
+    const { targetUid, targetRole } = data;
+
+    if (!targetUid || !['admin', 'driver'].includes(targetRole)) {
+        throw new HttpsError('invalid-argument', 'Dados inválidos.');
+    }
+
+    try {
+        await admin.firestore().collection('users').doc(targetUid).update({
+            role: targetRole
+        });
+        console.log(`[toggleUserRole] Success: ${targetUid} changed to ${targetRole} by ${callerUid}`);
+        return { success: true };
+    } catch (error) {
+        console.error('[toggleUserRole] Error updating user:', error);
+        throw new HttpsError('internal', 'Erro ao atualizar usuário.');
+    }
+});
+
 // --- Notification System & Background Tasks ---
 
 const nodemailer = require('nodemailer');

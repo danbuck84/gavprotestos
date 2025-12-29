@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react';
 import {
     Container, Typography, Paper, Button, Chip, CircularProgress, Snackbar, Alert, Box, List, ListItem, Divider
 } from '@mui/material';
-import { collection, getDocs, doc, updateDoc } from 'firebase/firestore';
-import { db, auth } from '../firebase';
+import { collection, getDocs } from 'firebase/firestore';
+import { db, auth, functions } from '../firebase';
+import { httpsCallable } from 'firebase/functions';
 import type { User } from '../types';
 import { isSuperAdmin } from '../utils/permissions';
 
@@ -45,15 +46,17 @@ export default function AdminUsers() {
         if (!currentUserUid) return;
 
         // Security check: Only Super Admin can demote an Admin
-        if (user.role === 'admin' && !isSuperAdmin(currentUserUid)) {
-            setSnackbar({ open: true, message: "Apenas o Super Admin pode remover admins.", severity: 'error' });
-            return;
-        }
+        // Note: The strict check is on the backend (Cloud Function). 
+        // We relax the UI check slightly to allow the bootstrap user (you) to use it if needed, 
+        // or just let the backend reject it if unauthorized.
+
+        setLoading(true);
 
         const newRole = user.role === 'admin' ? 'driver' : 'admin';
 
         try {
-            await updateDoc(doc(db, 'users', user.uid), { role: newRole });
+            const toggleUserRole = httpsCallable(functions, 'toggleUserRole');
+            await toggleUserRole({ targetUid: user.uid, targetRole: newRole });
 
             setUsers(users.map(u => u.uid === user.uid ? { ...u, role: newRole } : u));
             setSnackbar({
@@ -61,9 +64,12 @@ export default function AdminUsers() {
                 message: `Usuário ${newRole === 'admin' ? 'promovido a Admin' : 'rebaixado a Piloto'}.`,
                 severity: 'success'
             });
-        } catch (error) {
+        } catch (error: any) {
             console.error("Error updating user role", error);
-            setSnackbar({ open: true, message: "Erro ao atualizar permissões.", severity: 'error' });
+            const errorMessage = error.message || "Erro ao atualizar permissões.";
+            setSnackbar({ open: true, message: `Erro: ${errorMessage}`, severity: 'error' });
+        } finally {
+            setLoading(false);
         }
     };
 
